@@ -42,6 +42,8 @@
 #include "SEGGER_RTT_Conf.h"
 #include "stm32f4xx_hal.h"
 
+#include "eric_flash.h"
+
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
@@ -49,6 +51,8 @@ osThreadId defaultTaskHandle;
 
 /* USER CODE BEGIN Variables */
 extern RTC_HandleTypeDef hrtc;
+
+
 
 //thread
 osThreadId Lcd_disp_TaskHandle;//display
@@ -61,9 +65,22 @@ void func_touchTask(void const * argument);
 void func_sensorTask(void const * argument);
 void func_uartTask(void const * argument);
 
-uint8_t init_finish=0;
-extern volatile uint8_t work_flag;
+volatile uint8_t init_finish=0;
 
+
+extern volatile uint8_t current_datetime[];//current datetime
+
+
+volatile uint8_t sensor_flag=0;
+volatile uint8_t current_mode=1;//normal,sport,sleep
+volatile uint8_t batt_status=50;//current battery percent
+volatile uint8_t disp_sort=0;//display lcd sortno,0-time ,1-step,2-hrs,3-consume
+volatile uint8_t step_len=50;//step length
+
+volatile uint8_t disp_flag=0;//displaying lcd,don't do other
+
+
+stru_region current_sensor_data;
 /* USER CODE END Variables */
 
 /* Function prototypes -------------------------------------------------------*/
@@ -93,6 +110,9 @@ void send_message(uint8_t message)
 		osSignalSet(sensor_TaskHandle, message);
 	else if(message==3)//uart
 		osSignalSet(uart_TaskHandle, message);
+	else if(message==4)//display
+		osSignalSet(Lcd_disp_TaskHandle, message);
+
 
 }
 //---------------------------------------------------------
@@ -141,7 +161,8 @@ void StartDefaultTask(void const * argument)
 
 
   //²âÊÔ as7000
-  //as7000_deinit();
+	//as7000_init();
+
   //²âÊÔlis2ds
   if(lis2ds12_init()==0)
 		Error_Handler("g-sensor is error!");
@@ -151,13 +172,17 @@ void StartDefaultTask(void const * argument)
 	//Loop_Test_Tap();
 	Loop_Test_Pedometer();
 	
-//	if(iqs263_init()==0)
-//		Error_Handler("tp is error!");
-//	else
-//		Info_Handler("tp is ok!");
+	if(iqs263_init()==0)
+		Error_Handler("tp is error!");
+	else
+		Info_Handler("tp is ok!");
 	
-	//as7000
-	as7000_init();
+	
+	//flash init
+	flash_init();
+	//lcd init
+	lcd_init();
+	//display default lcd
 
 	//display thread
 	osThreadDef(disp_Task, func_DispTask, osPriorityNormal, 0, 128);
@@ -188,35 +213,97 @@ void StartDefaultTask(void const * argument)
 //lcd disp thread
 void func_DispTask(void const * argument)
 {
-		uint8_t curr_time[3];
+	char data[10];
+	uint8_t count=0;//10 times,gc4 update
 
-	//lcd_init();
+	//display lcd default datetime
+	send_message(4);
 	while(1)
 	{
-		osDelay(5000);
-		//osSignalWait(0x1, osWaitForever);
-		//lcd_test();
-  
+		osSignalWait(0x4, osWaitForever);
+		disp_flag=1;
+		#if 1
+		read_batt();
+		lcd_display_on(1);
+		lcd_disp_clear();
+		if(disp_sort==0)
+		{
+			//lcd_disp_bmp(1,80);
+			//lcd_disp_font(1,170,1,29,29);
+			//lcd_disp_number(10,200,data,33,12);
+			sprintf(data,"%02d%02d",current_datetime[3],current_datetime[4]);
+			lcd_disp_time(1,40,data,80,40);
+			sprintf(data,"%02d%02d%d",current_datetime[1],current_datetime[2],current_datetime[6]);
+			lcd_disp_date(1,205,data,29,15);
+		}
+		else if(disp_sort==1)//²½Êý
+		{
+			lcd_disp_bmp(1,40,1);
+			lcd_disp_font(1,130,1,2,29,29);
+			sprintf(data,"%d",current_sensor_data.step_count);
+			lcd_disp_number(10,160,data,29,12);
+			lcd_disp_font(1,190,2,2,29,29);
+			sprintf(data,"%d",(current_sensor_data.step_count*step_len)/100);
+			lcd_disp_number(10,220,data,29,12);
+			lcd_disp_font(1,250,3,1,24,24);
+			
+		}
+		else if(disp_sort==2)//consume
+		{
+			lcd_disp_bmp(1,40,2);
+			lcd_disp_font(1,140,4,3,29,29);
+			sprintf(data,"%d",current_sensor_data.step_count);
+			lcd_disp_number(10,170,data,29,12);
+			
+		}
+		else if(disp_sort==3)//hrs rate
+		{
+			lcd_disp_bmp(1,40,3);
+			lcd_disp_font(1,140,5,2,29,29);
+			sprintf(data,"%d",current_sensor_data.step_count);
+			lcd_disp_number(10,170,data,29,12);
+			
+		}
+		lcd_disp_battery(batt_status);
+		count++;
+		if(count>9)
+		{	
+			count=0;
+			lcd_display_update(1);
+		}
+		else
+			lcd_display_update(2);
 
-//osMutexWait(rtc_mutex, osWaitForever);
-			/* Get the RTC current Time */
-
-
-
+		lcd_display_on(0);
+	  #endif
+		disp_flag=0;
 	}
 }
 //-------------------------------------------------------------------
 //touch thread
 void func_touchTask(void const * argument)
 {
+	uint8_t temp=0,old_disp_sort=0;
 	while(1)
 	{
 		osSignalWait(0x1, osWaitForever);
-		if(work_flag==0)
+		temp=handleEvents();
+		if(disp_flag==1)
+			continue;
+		old_disp_sort=disp_sort;
+		if(temp==2)//left
 		{
-			work_flag=1;
-			handleEvents();
+			if(disp_sort>0)
+				disp_sort--;
 		}
+		else if(temp==3)//right
+		{
+			if(disp_sort<3)
+				disp_sort++;
+		}
+		if(disp_sort!=old_disp_sort)
+			send_message(4);
+
 	}
 
 }
@@ -225,31 +312,40 @@ void func_touchTask(void const * argument)
 void func_sensorTask(void const * argument)
 {
 	uint8_t curr_time[3],hour,min;
+	uint8_t flag=4;
+
 	while(1)
 	{
 		osSignalWait(0x2, osWaitForever);
+		sensor_flag=1;
 		//osDelay(2000);
 		//step
-		//LIS2DS12_ACC_GYRO_Pedo_Callback();
+		LIS2DS12_ACC_GYRO_Pedo_Callback();
 		//hrs
 		
-		read_rtc_status();
-		RTC_Read_datetime(curr_time,1);
-		SEGGER_RTT_printf(0,"TIMER:%d:%d:%d\r\n",curr_time[0],curr_time[1],curr_time[2]);			
+		current_sensor_data.hrs_rate=50;
 
-		hour=curr_time[0];
-		min=curr_time[1]+1;
-		if(min>59)
-		{	
-			min-=60;
-			if(hour==23)
-				hour=0;
-			else
-				hour++;
-		}
-		RTC_AlarmConfig(hour,min);
+		if(current_mode==1)//normal
+			current_sensor_data.sleep_status=0xffffffff;
+		else if(current_mode==3)//sleep
+			current_sensor_data.step_count=0xffff;
+		 
+		current_sensor_data.bld_press=0xff;//now we have not blood pressure
 
-		//send_message(3);
+		flash_write_movedata(&current_sensor_data);
+		
+//				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+//				osDelay(2000);
+//				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+//				led_flash(flag);
+//				flag--;
+//		    if(flag<1)
+//					flag=4;
+		//sprintf(data,"%d",current_sensor_data.step_count);
+		if(disp_sort==0 || disp_sort==1 || disp_sort==2 || disp_sort==3)
+			if(disp_flag==0)
+				send_message(4);
+		sensor_flag=0;
 		
 
 	}

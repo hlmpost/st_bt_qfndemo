@@ -37,6 +37,9 @@
 
 /* USER CODE BEGIN 0 */
 
+volatile uint8_t current_datetime[7]={16,1,1,10,10,10,1};//current datetime,first 6 member date time;last member week
+
+
 /* USER CODE END 0 */
 
 RTC_HandleTypeDef hrtc;
@@ -59,7 +62,7 @@ void MX_RTC_Init(void)
   hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
   HAL_RTC_Init(&hrtc);
 
-  sTime.Hours = 12;
+  sTime.Hours = 10;
   sTime.Minutes = 10;
   sTime.Seconds = 10;
   sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
@@ -75,7 +78,7 @@ void MX_RTC_Init(void)
 
     /**Enable the Alarm A 
     */
-  sAlarm.AlarmTime.Hours = 12;
+  sAlarm.AlarmTime.Hours = 10;
   sAlarm.AlarmTime.Minutes = 10;
   sAlarm.AlarmTime.Seconds = 40;
   sAlarm.AlarmTime.SubSeconds = 0;
@@ -180,12 +183,16 @@ void RTC_Read_datetime(uint8_t * data,uint8_t flag)
 		temp[1]=stimestructureget.Minutes;
 		temp[2]=stimestructureget.Seconds;
 		
+		memcpy(&current_datetime[3],temp,3);
+		
 		/* Get the RTC current Date */
 		HAL_RTC_GetDate(&hrtc, &sdatestructureget, RTC_FORMAT_BIN);
 		data[0]=sdatestructureget.Year;
 		data[1]=sdatestructureget.Month;
 		data[2]=sdatestructureget.Date;
+		current_datetime[6]=sdatestructureget.WeekDay;
 
+		memcpy(&current_datetime[0],data,3);
 
 		if(flag==1)
 		{

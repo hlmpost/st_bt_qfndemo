@@ -5,7 +5,7 @@
 
 #include "g-sensor.h"
 #include "comm.h"
-
+#include "eric_flash.h"
 
 
 static uint8_t buffer[10];
@@ -14,7 +14,7 @@ static status_t response;
 
 static uint16_t Number_Of_Steps = 0;
 
-extern Sensor_data_type current_sensor_data;
+extern stru_region current_sensor_data;
 
 
 //===================================================================
@@ -3705,7 +3705,7 @@ void LIS2DS12_ACC_GYRO_Pedo_Callback()
 	{
     LIS2DS12_ACC_Get_StepCounter((u8_t *)&Number_Of_Steps);
 		SEGGER_RTT_printf(0,"step count=%d!\r\n",Number_Of_Steps);	
-		current_sensor_data.step_data=Number_Of_Steps;
+		current_sensor_data.step_count=Number_Of_Steps;
   }
 }
 //-------------------------------------------------------

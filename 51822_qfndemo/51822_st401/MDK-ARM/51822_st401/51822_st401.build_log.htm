@@ -22,14 +22,80 @@ Dialog DLL:      TCM.DLL V1.14.4.0
  
 <h2>Project:</h2>
 E:\项目\51822\st资料\test\51822_qfndemo\51822_st401\MDK-ARM\51822_st401.uvprojx
-Project File Date:  04/14/2016
+Project File Date:  04/19/2016
 
 <h2>Output:</h2>
 Build target '51822_st401'
+compiling freertos.c...
+..\eric-src\eric_flash.h(50): warning:  #1-D: last line of file ends without a newline
+  #endif
+../Src/freertos.c(167): warning:  #223-D: function "lis2ds12_init" declared implicitly
+    if(lis2ds12_init()==0)
+../Src/freertos.c(173): warning:  #223-D: function "Loop_Test_Pedometer" declared implicitly
+        Loop_Test_Pedometer();
+../Src/freertos.c(175): warning:  #223-D: function "iqs263_init" declared implicitly
+        if(iqs263_init()==0)
+../Src/freertos.c(182): warning:  #223-D: function "flash_init" declared implicitly
+        flash_init();
+../Src/freertos.c(184): warning:  #223-D: function "lcd_init" declared implicitly
+        lcd_init();
+../Src/freertos.c(226): warning:  #223-D: function "read_batt" declared implicitly
+                read_batt();
+../Src/freertos.c(227): warning:  #223-D: function "lcd_display_on" declared implicitly
+                lcd_display_on(1);
+../Src/freertos.c(228): warning:  #223-D: function "lcd_disp_clear" declared implicitly
+                lcd_disp_clear();
+../Src/freertos.c(235): warning:  #223-D: function "lcd_disp_time" declared implicitly
+                        lcd_disp_time(1,40,data,80,40);
+../Src/freertos.c(237): warning:  #223-D: function "lcd_disp_date" declared implicitly
+                        lcd_disp_date(1,205,data,29,15);
+../Src/freertos.c(241): warning:  #223-D: function "lcd_disp_bmp" declared implicitly
+                        lcd_disp_bmp(1,40,1);
+../Src/freertos.c(242): warning:  #223-D: function "lcd_disp_font" declared implicitly
+                        lcd_disp_font(1,130,1,2,29,29);
+../Src/freertos.c(244): warning:  #223-D: function "lcd_disp_number" declared implicitly
+                        lcd_disp_number(10,160,data,29,12);
+../Src/freertos.c(253): warning:  #223-D: function "lcd_disp_bmp" declared implicitly
+                        lcd_disp_bmp(1,40,2);
+../Src/freertos.c(254): warning:  #223-D: function "lcd_disp_font" declared implicitly
+                        lcd_disp_font(1,140,4,3,29,29);
+../Src/freertos.c(256): warning:  #223-D: function "lcd_disp_number" declared implicitly
+                        lcd_disp_number(10,170,data,29,12);
+../Src/freertos.c(261): warning:  #223-D: function "lcd_disp_bmp" declared implicitly
+                        lcd_disp_bmp(1,40,3);
+../Src/freertos.c(262): warning:  #223-D: function "lcd_disp_font" declared implicitly
+                        lcd_disp_font(1,140,5,2,29,29);
+../Src/freertos.c(264): warning:  #223-D: function "lcd_disp_number" declared implicitly
+                        lcd_disp_number(10,170,data,29,12);
+../Src/freertos.c(267): warning:  #223-D: function "lcd_disp_battery" declared implicitly
+                lcd_disp_battery(batt_status);
+../Src/freertos.c(272): warning:  #223-D: function "lcd_display_update" declared implicitly
+                        lcd_display_update(1);
+../Src/freertos.c(275): warning:  #223-D: function "lcd_display_update" declared implicitly
+                        lcd_display_update(2);
+../Src/freertos.c(290): warning:  #223-D: function "handleEvents" declared implicitly
+                temp=handleEvents();
+../Src/freertos.c(323): warning:  #223-D: function "LIS2DS12_ACC_GYRO_Pedo_Callback" declared implicitly
+                LIS2DS12_ACC_GYRO_Pedo_Callback();
+../Src/freertos.c(335): warning:  #223-D: function "flash_write_movedata" declared implicitly
+                flash_write_movedata(&current_sensor_data);
+../Src/freertos.c(314): warning:  #177-D: variable "curr_time" was declared but never referenced
+        uint8_t curr_time[3],hour,min;
+../Src/freertos.c(314): warning:  #177-D: variable "hour" was declared but never referenced
+        uint8_t curr_time[3],hour,min;
+../Src/freertos.c(314): warning:  #177-D: variable "min" was declared but never referenced
+        uint8_t curr_time[3],hour,min;
+../Src/freertos.c(315): warning:  #177-D: variable "flag" was declared but never referenced
+        uint8_t flag=4;
+../Src/freertos.c(357): warning:  #223-D: function "uart2_read" declared implicitly
+        uart2_read(1);
+../Src/freertos.c(361): warning:  #223-D: function "send_sensor_data" declared implicitly
+                send_sensor_data();
+../Src/freertos.c: 32 warnings, 0 errors
 linking...
-Program Size: Code=28128 RO-data=644 RW-data=284 ZI-data=17796  
+Program Size: Code=42872 RO-data=75644 RW-data=8080 ZI-data=56776  
 FromELF: creating hex file...
-"51822_st401\51822_st401.axf" - 0 Error(s), 0 Warning(s).
+"51822_st401\51822_st401.axf" - 0 Error(s), 32 Warning(s).
 
 <h2>Software Packages used:</h2>
 

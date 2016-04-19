@@ -1,24 +1,34 @@
 #ifndef __ERIC_FLASH_H
 #define __ERIC_FLASH_H
 #include <stdint.h>
+//flash address
+#define ADDR_FLASH_SECTOR_0     (0x08000000) /* Base @ of Sector 0, 16 Kbytes */
+#define ADDR_FLASH_SECTOR_1     (0x08004000) /* Base @ of Sector 1, 16 Kbytes */
+#define ADDR_FLASH_SECTOR_2     (0x08008000) /* Base @ of Sector 2, 16 Kbytes */
+#define ADDR_FLASH_SECTOR_3     (0x0800C000) /* Base @ of Sector 3, 16 Kbytes */
+#define ADDR_FLASH_SECTOR_4     (0x08010000) /* Base @ of Sector 4, 64 Kbytes */
+#define ADDR_FLASH_SECTOR_5     (0x08020000) /* Base @ of Sector 5, 128 Kbytes */
+#define ADDR_FLASH_SECTOR_6     (0x08040000) /* Base @ of Sector 6, 128 Kbytes */
+#define ADDR_FLASH_SECTOR_7     (0x08060000) /* Base @ of Sector 7, 128 Kbytes */
+
 //放在ram中
-//记录区的信息头结构体
+//记录区的信息头结构体,8个字节
 typedef struct Header
 {
-	uint32_t curr_date;//当前日期
-	uint8_t up_flag;//上传的标志；0-未上传，1-已上传
 	uint32_t curr_step_data;//step:记录当天的当前总步数；
 	uint8_t curr_hrs_data;//hrs：最新测量的心率数据
-	uint8_t batt_status;//battery percent
+	uint16_t cur_bld_press;//blood pressure
 	uint8_t *start_add;//起始地址
 } stru_header;//32位对齐
 
 //存储在flash中
-typedef struct Region
+typedef struct
 {
-	stru_header * curr_header;//当前的头信息flash地址
-	//uint16_t * step_add;//两次时间间隔内的步数存储位置
-	//uint16_t * hrs_add;//当前读到心率数据存储位置
+	uint16_t step_count;
+	uint32_t sleep_status;
+	uint8_t  hrs_rate;
+	uint16_t bld_press;// blood pressure
+	
 } stru_region;
 
 //存储在flash中，记录一些参数，如步数

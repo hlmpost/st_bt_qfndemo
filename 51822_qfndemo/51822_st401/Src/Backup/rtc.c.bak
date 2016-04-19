@@ -37,6 +37,9 @@
 
 /* USER CODE BEGIN 0 */
 
+volatile uint8_t current_datetime[7];//current datetime,first 6 member date time;last member week
+
+
 /* USER CODE END 0 */
 
 RTC_HandleTypeDef hrtc;
@@ -131,23 +134,20 @@ void HAL_RTC_MspDeInit(RTC_HandleTypeDef* hrtc)
 } 
 
 /* USER CODE BEGIN 1 */
+//----------------------------------------------------
+//check status
+void read_rtc_status()
+{
+			while(HAL_RTC_GetState(&hrtc)!=1);
+
+}
+//-------------------------------------------------------
 //crycle set min alarm,now 1 min
 void RTC_AlarmConfig(uint8_t hour,uint8_t min)
 {
   static RTC_AlarmTypeDef sAlarm;
-  /*##-1- Configure the RTC Alarm peripheral #################################*/
-  /* Set Alarm to 02:20:30 
-     RTC Alarm Generation: Alarm on Hours, Minutes and Seconds */
-//  salarmstructure.Alarm = RTC_ALARM_A;
-//  salarmstructure.AlarmDateWeekDay = RTC_WEEKDAY_MONDAY;
-//  salarmstructure.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
-//  salarmstructure.AlarmMask = RTC_ALARMMASK_DATEWEEKDAY;
-//  salarmstructure.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_NONE;
-//  salarmstructure.AlarmTime.TimeFormat = RTC_HOURFORMAT12_AM;
-//  salarmstructure.AlarmTime.Hours = hour;
-//  salarmstructure.AlarmTime.Minutes = min;
-//	salarmstructure.AlarmTime.Seconds = 1;
-	
+	HAL_RTC_DeactivateAlarm(&hrtc,RTC_ALARM_A);
+	read_rtc_status();
 	sAlarm.AlarmTime.Hours = hour;
   sAlarm.AlarmTime.Minutes = min;
   sAlarm.AlarmTime.Seconds = 1;
@@ -168,6 +168,8 @@ void RTC_AlarmConfig(uint8_t hour,uint8_t min)
 //read date time
 void RTC_Read_datetime(uint8_t * data,uint8_t flag)
 {
+	uint8_t temp[3];
+	//first read tiem ,then read date, or not time is not run;
 	RTC_DateTypeDef sdatestructureget;
   RTC_TimeTypeDef stimestructureget;
 	HAL_RTCStateTypeDef status;
@@ -175,21 +177,26 @@ void RTC_Read_datetime(uint8_t * data,uint8_t flag)
 //osMutexWait(rtc_mutex, osWaitForever);
 	if(data!=NULL)
 	{	
+		/* Get the RTC current Time */
+		HAL_RTC_GetTime(&hrtc, &stimestructureget, RTC_FORMAT_BIN);
+		temp[0]=stimestructureget.Hours;
+		temp[1]=stimestructureget.Minutes;
+		temp[2]=stimestructureget.Seconds;
+		
+		memcpy(&current_datetime[3],temp,3);
+		
+		/* Get the RTC current Date */
+		HAL_RTC_GetDate(&hrtc, &sdatestructureget, RTC_FORMAT_BIN);
+		data[0]=sdatestructureget.Year;
+		data[1]=sdatestructureget.Month;
+		data[2]=sdatestructureget.Date;
+		current_datetime[6]=sdatestructureget.WeekDay;
+
+		memcpy(&current_datetime[0],data,3);
+
 		if(flag==1)
 		{
-			/* Get the RTC current Time */
-			HAL_RTC_GetTime(&hrtc, &stimestructureget, RTC_FORMAT_BIN);
-			data[0]=stimestructureget.Hours;
-			data[1]=stimestructureget.Minutes;
-			data[2]=stimestructureget.Seconds;
-		}
-		else if(flag==2)
-		{
-			/* Get the RTC current Date */
-			HAL_RTC_GetDate(&hrtc, &sdatestructureget, RTC_FORMAT_BIN);
-			data[0]=sdatestructureget.Year;
-			data[1]=sdatestructureget.Month;
-			data[2]=sdatestructureget.Date;
+			memcpy(data,temp,3);
 		}
 	}
 	//osMutexRelease(rtc_mutex);
@@ -203,7 +210,6 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 		send_message(2);
 
 }
-
 
 /* USER CODE END 1 */
 

@@ -17,16 +17,24 @@ static void as7000_power(uint8_t flag)
 	if(flag==1)//on
 	{
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
 	}
 	else//off
 	{
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
 	}
 }
-
-
+//-------------------------------------------------------
+static void as7000_sleep(uint8_t flag)
+{
+	if(flag==1)//on
+	{
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_SET);
+	}
+	else//off
+	{
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+	}
+}
 //---------------------------------------------------
 static void as7000_WriteBytes(unsigned char address,unsigned char data)
 {
@@ -72,14 +80,21 @@ static void as7000_ReadBytes(unsigned char address,unsigned char* data)
 //--------------------------------------------
 unsigned char as7000_init()
 {
-as7000_power(0);
-	return 0;
+//as7000_power(1);
+//osDelay(5000);
+//as7000_sleep(0);
+osDelay(3000);
+
 as7000_ReadBytes(0x00,&data_buffer[0]);
 as7000_ReadBytes(0x01,&data_buffer[1]);
 as7000_ReadBytes(0x02,&data_buffer[2]);
 as7000_ReadBytes(0x03,&data_buffer[3]);
 as7000_ReadBytes(0x04,&data_buffer[4]);
 as7000_ReadBytes(0x05,&data_buffer[5]);
+as7000_ReadBytes(0x06,&data_buffer[7]);
+as7000_ReadBytes(0x07,&data_buffer[8]);
+
+	return 1;
 if(data_buffer[0]==1 && data_buffer[0]==3)
 		return 1;
 else
@@ -90,6 +105,12 @@ else
 //¶ÁÐÄÂÊ
 unsigned char as7000_hrs_rate()
 {
+uint8_t i=0,flag=0;;
+as7000_power(1);
+osDelay(1000);
+as7000_init();
+while(1)
+{
 as7000_ReadBytes(0x08,&data_buffer[0]);
 as7000_ReadBytes(0x09,&data_buffer[1]);
 as7000_ReadBytes(0x0a,&data_buffer[2]);
@@ -97,6 +118,24 @@ as7000_ReadBytes(0x0b,&data_buffer[3]);
 as7000_ReadBytes(0x0c,&data_buffer[4]);
 as7000_ReadBytes(0x0d,&data_buffer[5]);
 as7000_ReadBytes(0x0e,&data_buffer[6]);
+if(data_buffer[1]>0 && i==0)
+{	
+	flag=1;
+}
+if(flag==1)
+{
+	i++;
+	if(i>4)
+		break;
+}
+osDelay(1000);
+
+}
+
+as7000_power(0);
+
+SEGGER_RTT_printf(0,"hrs:%d;status=%d,count=%d\r\n",data_buffer[2],data_buffer[1],i);			
+
 return data_buffer[2];
 
 }

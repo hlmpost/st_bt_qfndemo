@@ -56,3 +56,4 @@
 51822_st401\comm.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h
 51822_st401\comm.o: ../Inc/usart.h
 51822_st401\comm.o: ..\eric-src\comm.h
+51822_st401\comm.o: ..\eric-src\eric_flash.h

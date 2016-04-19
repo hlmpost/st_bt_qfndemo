@@ -8,14 +8,41 @@
 #define S_ADDRESS       (0x88)
 
 
+
 static uint8_t data_buffer[10];
 
-volatile uint8_t work_flag=0;
 //------------------------------------------------------
+//control rdy line
+static void iqs263_rdy(uint8_t flag)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	if(flag==1)
+	{
+		GPIO_InitStruct.Pin = GPIO_PIN_0;
+		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+		GPIO_InitStruct.Pull = GPIO_PULLUP;
+		GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+	}
+	else
+	{
+		GPIO_InitStruct.Pin = GPIO_PIN_0;
+		GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+		GPIO_InitStruct.Pull = GPIO_PULLUP;
+		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	}
+}
+//-----------------------------------------------
+static uint8_t iqs263_rdy_read()
+{
+	return HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0);
+}
 //---------------------------------------------------
 static unsigned char iqs263_WriteBytes(unsigned char* data,unsigned char len)
 {
-	while(HAL_I2C_Master_Transmit(&hi2c1, S_ADDRESS,data ,len, 10)!= HAL_OK)
+	while(HAL_I2C_Master_Transmit(&hi2c1, S_ADDRESS,data ,len, 100)!= HAL_OK)
   {
     /* Error_Handler() function is called when Timeout error occurs.
        When Acknowledge failure occurs (Slave don't acknowledge it's address)
@@ -31,7 +58,7 @@ static unsigned char iqs263_WriteBytes(unsigned char* data,unsigned char len)
 //---------------------------------------------
 static unsigned char iqs263_ReadBytes(unsigned char* data,unsigned char len)
 {
-	while(HAL_I2C_Master_Receive(&hi2c1, S_ADDRESS, data, len, 10) != HAL_OK)
+	while(HAL_I2C_Master_Receive(&hi2c1, S_ADDRESS, data, len, 100) != HAL_OK)
   {
     /* Error_Handler() function is called when Timeout error occurs.
        When Acknowledge failure occurs (Slave don't acknowledge it's address)
@@ -51,16 +78,16 @@ static void IQS263DeviceSettings(void)
 //		data_buffer[0] = SYS_FLAGS;
 //    data_buffer[1] = 0x10;
 //		iqs263_WriteBytes(data_buffer,2);
-		osDelay(10);
+//		osDelay(10);
  // Setup prox settings
-    data_buffer[0] = PROX_SETTINGS;
-    data_buffer[1] = PROXSETTINGS0_VAL;
-    data_buffer[2] = PROXSETTINGS1_VAL;
-    data_buffer[3] = PROXSETTINGS2_VAL;
-    data_buffer[4] = PROXSETTINGS3_VAL;
-    data_buffer[5] = EVENT_MASK_VAL;
-		iqs263_WriteBytes(data_buffer,6);
-		osDelay(10);
+//    data_buffer[0] = PROX_SETTINGS;
+//    data_buffer[1] = PROXSETTINGS0_VAL;
+//    data_buffer[2] = PROXSETTINGS1_VAL;
+//    data_buffer[3] = PROXSETTINGS2_VAL;
+//    data_buffer[4] = PROXSETTINGS3_VAL;
+//    data_buffer[5] = EVENT_MASK_VAL;
+//		iqs263_WriteBytes(data_buffer,6);
+//		osDelay(10);
 	
     // Set active channels
 		data_buffer[0] = ACTIVE_CHANNELS;
@@ -142,7 +169,7 @@ static void IQS263DeviceSettings(void)
 void touchEvent(void)
 {
     unsigned char touch0 = data_buffer[2];
-		Info_Handler("touchEvent");
+		//Info_Handler("touchEvent");
     if (touch0 != 0)
     {
         /* CHANNEL 1*/
@@ -183,7 +210,7 @@ void slideEvent(void)
 {
     unsigned char sliderCoords = data_buffer[3];
     unsigned char touch0 = data_buffer[2];
-		Info_Handler("slideEvent");
+		//Info_Handler("slideEvent");
     if (touch0 != 0)
     {
         if ((sliderCoords > 0 && sliderCoords < 85)&& ((touch0 & 0x02) == 0x02))
@@ -217,7 +244,7 @@ void slideEvent(void)
 void proxEvent(void)
 {
     unsigned char prox = data_buffer[2];
-		Info_Handler("proxEvent");
+		//Info_Handler("proxEvent");
 if ((prox & 0x01) == 0x01)              // If a prox event occures
     {
    //     LATDbits.LATD3 = 0;                 // Toggle LED 4 ON
@@ -290,33 +317,66 @@ unsigned char handleEvents(void)
 	unsigned char show_reset = 1;
 	unsigned char  events=0;
 	uint8_t temp=0;
+  if(iqs263_rdy_read()==1)
+		return 0;
+	//temp=SYS_FLAGS;
+	//if(iqs263_WriteBytes(&temp,1)==1)
+	//	return 0xff;
+	//osDelay();
+	if(iqs263_ReadBytes(data_buffer,2)==1)
+		return 0xff;
+	iqs263_rdy(1);
 	temp=SYS_FLAGS;
-	osDelay(5);
 	if(iqs263_WriteBytes(&temp,1)==1)
 		return 0xff;
-	osDelay(5);
-	iqs263_ReadBytes(data_buffer,2);
-	osDelay(5);
-	temp=TOUCH_BYTES;
-	iqs263_WriteBytes(&temp,1);
-	osDelay(5);
-	iqs263_ReadBytes(&data_buffer[2],1);
-	osDelay(5);
-	temp=COORDINATES;
-	iqs263_WriteBytes(&temp,1);
-	osDelay(5);
-	iqs263_ReadBytes(&data_buffer[3],3);
+	iqs263_rdy(0);
+
+	//osDelay(5);
+	//temp=TOUCH_BYTES;
+	//iqs263_WriteBytes(&temp,1);
+	//osDelay(5);
+	//iqs263_ReadBytes(&data_buffer[2],1);
+	//osDelay(5);
+	//temp=COORDINATES;
+	//iqs263_WriteBytes(&temp,1);
+	//osDelay(5);
+	//iqs263_ReadBytes(&data_buffer[3],3);
   show_reset = data_buffer[0]&0x80;
 	
 //	SEGGER_RTT_printf(0,"SYS_FLAGS=%02x,%02x!\r\n",data_buffer[0],data_buffer[1]);		
 //	SEGGER_RTT_printf(0,"TOUCH_BYTES=%02x!\r\n",data_buffer[2]);		
-//	SEGGER_RTT_printf(0,"COORDINATES=%02x,%02x,%02x!\r\n",data_buffer[3],data_buffer[4],data_buffer[5]);		
+	//SEGGER_RTT_printf(0,"COORDINATES=%02x,%02x,%02x!\r\n",data_buffer[3],data_buffer[4],data_buffer[5]);	
 	if(show_reset)
 	{
 		__nop();
 	}
     events = data_buffer[1];
+//return events; 	
+	    /********************************* TAP ************************************/
 
+    if((events & 0x20) == 0x20)
+    {    tapEvent();
+			temp=1;
+		}
+
+    /******************************* FLICK (LEFT) *****************************/
+
+    if((events & 0x40) == 0x40)
+    {    flickLeft();
+			temp=2;
+		}
+
+    /******************************* FLICK (RIGHT) ****************************/
+
+    if((events & 0x80) == 0x80)
+		{
+        flickRight();
+			temp=3;
+		}
+SEGGER_RTT_printf(0,"flick:%d\r\n",temp);
+
+return temp; 	
+		#if 0
     /******************************* PROXIMITY ********************************/
 		
     if ((events & 0x01) == 0x01)
@@ -353,8 +413,8 @@ unsigned char handleEvents(void)
     if((events & 0x80) == 0x80)
         flickRight();
 		
-		work_flag=0;
 		return events;
+		#endif
 }
 //------------------------------------------------------
 unsigned char iqs263_init()
@@ -408,16 +468,21 @@ while(1)
 			break;
 }
 #endif
-osDelay(100);//need,or read error
+
+iqs263_rdy(1);
+//osDelay(1);
 iqs263_WriteBytes(data_buffer,1);
-osDelay(10);
+osDelay(1);
 iqs263_ReadBytes(data_buffer,1);
-SEGGER_RTT_printf(0,"error:%x\r\n",data_buffer[0]);
+SEGGER_RTT_printf(0,"touch id:%x\r\n",data_buffer[0]);
 
 if(data_buffer[0]==0x3c)
 {	
 	osDelay(10);
 	IQS263DeviceSettings();
+	data_buffer[0]=SYS_FLAGS;
+	iqs263_WriteBytes(data_buffer,1);
+	iqs263_rdy(0);
 	return 1;
 }
 else

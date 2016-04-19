@@ -3,12 +3,17 @@
 #include "cmsis_os.h"
 #include "usart.h"
 #include "comm.h"
+#include "eric_flash.h"
 
 
 extern uint8_t buffer[];
 
 
-Sensor_data_type current_sensor_data;//记录当前的传感器数据 
+extern stru_region current_sensor_data;
+
+extern volatile uint8_t current_mode;//normal,sport,sleep
+extern volatile uint8_t batt_status;//current battery percent
+
 
 //extern stru_para sys_para;
 
@@ -97,11 +102,14 @@ void send_sensor_data()
 	buffer[1]=0x05;
 	buffer[2]=0xaa;//command
 	buffer[3]=0x05;
-	current_sensor_data.step_data++;
-	temp=(uint8_t *)&(current_sensor_data.step_data);
+	current_sensor_data.step_count++;
+	if(current_mode==3)
+		temp=(uint8_t *)&(current_sensor_data.sleep_status);
+	else
+		temp=(uint8_t *)&(current_sensor_data.step_count);
 	memcpy(&buffer[4],temp,3);
-	buffer[7]=current_sensor_data.hrs_data;
-	buffer[8]=current_sensor_data.batt_status;
+	buffer[7]=current_sensor_data.hrs_rate;
+	buffer[8]=batt_status;
 	buffer[9]=check_sum(buffer,9);
 	uart2_send(buffer,10);
 

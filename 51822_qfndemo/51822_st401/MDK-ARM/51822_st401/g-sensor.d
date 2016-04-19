@@ -57,3 +57,4 @@
 51822_st401\g-sensor.o: ../Inc/i2c.h
 51822_st401\g-sensor.o: ..\eric-src\g-sensor.h
 51822_st401\g-sensor.o: ..\eric-src\comm.h
+51822_st401\g-sensor.o: ..\eric-src\eric_flash.h

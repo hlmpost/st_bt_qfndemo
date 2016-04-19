@@ -104,7 +104,7 @@ void GR_SetClip(int16_t x, int16_t y, int16_t w, int16_t h)
 
 /******************************************************************************
 ******************************************************************************/
-void GR_DrawPixel(int16_t x, int16_t y, uint8_t color)
+inline void GR_DrawPixel(int16_t x, int16_t y, uint8_t color)
 {
 	uint16_t address;
 	if (x < _data.ClipArea.x || y < _data.ClipArea.y ||
