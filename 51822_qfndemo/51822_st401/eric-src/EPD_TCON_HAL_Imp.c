@@ -230,7 +230,8 @@ static uint32_t _ReadBusyPin(void)
 //------------------------------------------------------
 static void _DelayMS(int32_t ms)
 {
-	osDelay(ms);
+	//osDelay(ms);
+	HAL_Delay(ms);
 }
 //-----------------------------------------------
 static void _OnFrameStartEvent()

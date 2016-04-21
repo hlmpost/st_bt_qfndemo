@@ -93,7 +93,8 @@ static void IQS263DeviceSettings(void)
 		data_buffer[0] = ACTIVE_CHANNELS;
     data_buffer[1] = ACTIVE_CHS;
 		iqs263_WriteBytes(data_buffer,2);
-		osDelay(10);
+		//osDelay(10);
+		HAL_Delay(10);
     // Setup touch and prox thresholds for each channel
 		data_buffer[0] = THRESHOLDS;
     data_buffer[1] = PROX_THRESHOLD;
@@ -105,14 +106,16 @@ static void IQS263DeviceSettings(void)
     data_buffer[7] = HALT_TIME;
     data_buffer[8] = I2C_TIMEOUT;
 		iqs263_WriteBytes(data_buffer,9);
-		osDelay(10);
+		//osDelay(10);
+		HAL_Delay(10);
     // Set the ATI Targets (Target Counts)
 		data_buffer[0] = TIMINGS_AND_TARGETS;  //for lp mode  if it is not 0
     data_buffer[1] = LOW_POWER;  //for lp mode  if it is not 0
     data_buffer[2] = ATI_TARGET_TOUCH;
     data_buffer[3] = ATI_TARGET_PROX;
 		iqs263_WriteBytes(data_buffer,4);
-		osDelay(10);
+		//osDelay(10);
+		HAL_Delay(10);
 //    // Set the BASE value for each channel
 //    data_buffer[0] = MULTIPLIERS_CH0;
 //    data_buffer[1] = MULTIPLIERS_CH1;
@@ -140,22 +143,26 @@ static void IQS263DeviceSettings(void)
     data_buffer[2] = FLICK_TIMER;
     data_buffer[3] = FLICK_THRESHOLD;
 		iqs263_WriteBytes(data_buffer,4);
-		osDelay(10);
+		//osDelay(10);
+		HAL_Delay(10);
     // Redo ati
 		data_buffer[0] = PROX_SETTINGS;
     data_buffer[1] = 0x10;
 		iqs263_WriteBytes(data_buffer,2);
-		osDelay(10);
+		//osDelay(10);
+		HAL_Delay(10);
     // Wait untill the ATI algorithm is done
     do
     {
 			  data_buffer[0]=PROX_SETTINGS;
 			  iqs263_WriteBytes(data_buffer,1);
-			  osDelay(10);
+			  //osDelay(10);
+			  HAL_Delay(10);
 				iqs263_ReadBytes(data_buffer,1);
     }while((data_buffer[0] & 0x04) == 0x04);
 
-		osDelay(10);
+		//osDelay(10);
+		HAL_Delay(10);
      // Setup prox settings
 		data_buffer[0] = PROX_SETTINGS;
     data_buffer[1] = PROXSETTINGS0_VAL;
@@ -472,7 +479,8 @@ while(1)
 iqs263_rdy(1);
 //osDelay(1);
 iqs263_WriteBytes(data_buffer,1);
-osDelay(1);
+//osDelay(1);
+HAL_Delay(1);
 iqs263_ReadBytes(data_buffer,1);
 SEGGER_RTT_printf(0,"touch id:%x\r\n",data_buffer[0]);
 

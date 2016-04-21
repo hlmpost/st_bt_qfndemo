@@ -141,14 +141,46 @@ void PostSleepProcessing(uint32_t *ulExpectedIdleTime);
 /* Hook prototypes */
 
 /* USER CODE BEGIN PREPOSTSLEEP */
+static uint8_t sleep_count=0,wake_count=0;
 void PreSleepProcessing(uint32_t *ulExpectedIdleTime)
 {
+	if(init_finish<1)
+		return;
 /* place for user code */ 
+	
+	sleep_count++;
+		SEGGER_RTT_printf(0,"PreSleepProcessing:%d\r\n",sleep_count);	
+	if(sleep_count>250)
+		sleep_count=1;
+	
+	__GPIOC_CLK_DISABLE();
+  __GPIOA_CLK_DISABLE();
+  __GPIOB_CLK_DISABLE();
+	HAL_PWREx_EnableFlashPowerDown();
+	  
+  /* Set SLEEPDEEP bit of Cortex System Control Register */
+  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+
 }
 
 void PostSleepProcessing(uint32_t *ulExpectedIdleTime)
 {
+	if(init_finish<1)
+		return;
+
+	 CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));  
 /* place for user code */
+  SystemClock_Config();
+
+  __GPIOC_CLK_ENABLE();
+  __GPIOA_CLK_ENABLE();
+  __GPIOB_CLK_ENABLE();
+	
+		wake_count++;
+		SEGGER_RTT_printf(0,"PostSleepProcessing:%d\r\n",wake_count);	
+	if(wake_count>250)
+		wake_count=1;
 }
 /* USER CODE END PREPOSTSLEEP */
 
@@ -463,7 +495,8 @@ void func_buttonTask(void const * argument)
 		{	
 			if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)==GPIO_PIN_SET)
 				break;
-			osDelay(15);
+			//osDelay(15);
+					HAL_Delay(15);
 		}
 		if(i==10)//button is valid
 		{

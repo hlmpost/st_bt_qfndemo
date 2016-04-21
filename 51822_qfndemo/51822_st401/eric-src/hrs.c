@@ -82,7 +82,8 @@ unsigned char as7000_init()
 {
 as7000_power(1);
 as7000_sleep(0);
-osDelay(3000);
+//osDelay(3000);
+HAL_Delay(3000);
 
 as7000_ReadBytes(0x00,&data_buffer[0]);
 as7000_ReadBytes(0x01,&data_buffer[1]);
@@ -108,7 +109,8 @@ uint8_t i=0,flag=0;;
 uint16_t total=0;
 uint8_t hrs_min=0xff,hrs_max=0,hrs_rate=0;
 as7000_power(1);
-osDelay(2000);
+//osDelay(2000);
+HAL_Delay(2000);
 //as7000_init();
 while(1)
 {
@@ -130,7 +132,8 @@ while(1)
 		hrs_rate=(total-hrs_min-hrs_max)/8;
 		break;
 	}
-	osDelay(200);
+	//osDelay(200);
+	HAL_Delay(10);
 
 }
 as7000_power(0);
