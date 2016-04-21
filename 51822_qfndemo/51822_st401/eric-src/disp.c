@@ -183,7 +183,10 @@ void lcd_disp_number(uint8_t x,uint8_t y,char * data,uint8_t font_h,uint8_t font
 	GR_FillRectangle(0,y,128,font_h,3);
 	for(uint8_t i=0;i<strlen(data);i++)
 	{
-		lcd_write_data(x,y,number22[data[i]-0x30],font_w,sizeof(number22[data[i]-0x30]),0);
+		if(data[i]==0x2e)//.
+			lcd_write_data(x,y,number22[10],font_w,sizeof(number22[10]),0);
+		else
+			lcd_write_data(x,y,number22[data[i]-0x30],font_w,sizeof(number22[data[i]-0x30]),0);
 		x+=font_w;
 //		if(x>(127-(old_x+16)))
 //		{

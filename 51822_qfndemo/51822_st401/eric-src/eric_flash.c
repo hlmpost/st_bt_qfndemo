@@ -24,7 +24,7 @@ stru_para sys_para;
 
 //建立14的信息头数组，每个flash区各7,分两个扇区进行
 stru_header data_header[14];
-static uint8_t curr_index=0;//当前正在写的信息头索引
+uint8_t curr_index=0;//当前正在写的信息头索引
 
 extern uint8_t alarm_flag;
 
@@ -145,7 +145,7 @@ void flash_erase_para_sector()
 通过index判断应存储在哪个地址。
 数据=0xff，则数据无效，不用写
 */
-void flash_write_movedata(stru_region * sensor_data)
+void flash_write_movedata(stru_region * sensor_data,uint8_t mode)
 {
 	uint8_t i=0;
 	uint32_t curr_date=0;
@@ -197,14 +197,19 @@ void flash_write_movedata(stru_region * sensor_data)
 	{
 		HAL_FLASH_Unlock();
 		//write into flash
-		if(sensor_data->step_count!=0xffff)
-		{
-			 HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,(uint32_t)(temp_add), sensor_data->step_count);
-		}
-		else if(sensor_data->sleep_status!=0xffffffff)
-		{
-			HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,(uint32_t)(temp_add+2), sensor_data->sleep_status);
-		}
+		if(mode==2)//sleep
+				HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,(uint32_t)(temp_add+2), sensor_data->sleep_status);
+		else
+				HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,(uint32_t)(temp_add), sensor_data->step_count);
+		//write into flash
+//		if(sensor_data->step_count!=0xffff)
+//		{
+//			 HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,(uint32_t)(temp_add), sensor_data->step_count);
+//		}
+//		else if(sensor_data->sleep_status!=0xffffffff)
+//		{
+//			HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,(uint32_t)(temp_add+2), sensor_data->sleep_status);
+//		}
 		if(sensor_data->hrs_rate!=0xff)
 			HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE,(uint32_t)(temp_add+5), sensor_data->hrs_rate);
 		if(sensor_data->bld_press!=0xffff)
@@ -224,7 +229,7 @@ void flash_write_movedata(stru_region * sensor_data)
 	}
 	
 	RTC_AlarmConfig(hour,min);
-	SEGGER_RTT_printf(0,"flash_write_movedata:index=%d;address=%x;time=%d:%d;write_add=0x%x\r\n",curr_index,data_header[curr_index].start_add,curr_time[0],curr_time[1],temp_add);
+	SEGGER_RTT_printf(0,"flash_write_movedata:index=%d;address=%x;time=%d:%d;write_add=0x%x,step=%d\r\n",curr_index,data_header[curr_index].start_add,curr_time[0],curr_time[1],temp_add,sensor_data->step_count);
 
 }
 

@@ -67,8 +67,8 @@
 #define ATI_TARGET_TOUCH					0x30
 #define ATI_TARGET_PROX						0x40
 
-#define TAP_TIMER						100
-#define FLICK_TIMER						100
+#define TAP_TIMER						60
+#define FLICK_TIMER						60
 #define FLICK_THRESHOLD						20
 //#define TAP_TIMER						200
 //#define FLICK_TIMER						60

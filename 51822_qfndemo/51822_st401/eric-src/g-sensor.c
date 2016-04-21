@@ -3706,7 +3706,11 @@ void LIS2DS12_ACC_GYRO_Pedo_Callback()
     LIS2DS12_ACC_Get_StepCounter((u8_t *)&Number_Of_Steps);
 		SEGGER_RTT_printf(0,"step count=%d!\r\n",Number_Of_Steps);	
 		current_sensor_data.step_count=Number_Of_Steps;
+		//---------------------------------------------------------------
+		//reset step count
+		LIS2DS12_ACC_W_RST_NSTEP(LIS2DS12_ACC_RST_NSTEP_ON);
   }
+	
 }
 //-------------------------------------------------------
 /*
@@ -3732,8 +3736,18 @@ static void SetupPedoEvent(u8_t lir_on)
 /* Init the Pedometer */
 static void init_LIS2DS12_Pedometer(void)
 {
+	response = LIS2DS12_ACC_W_FullScale(LIS2DS12_ACC_FS_2G);
+  if(response==MEMS_ERROR) while(1); //manage here comunication error
+
+  /* BDU Enable */
+  response = LIS2DS12_ACC_W_BDU(LIS2DS12_ACC_BDU_ON);
+  if(response==MEMS_ERROR) while(1); //manage here comunication error
+
   /* Set ACC ODR  HR_14bit 100Hz*/
-  response = LIS2DS12_ACC_W_ODR(LIS2DS12_ACC_ODR_HR_14bit_100Hz);
+  //response = LIS2DS12_ACC_W_ODR(LIS2DS12_ACC_ODR_HR_14bit_100Hz);
+	//lp
+	response = LIS2DS12_ACC_W_ODR(LIS2DS12_ACC_ODR_LP_10bit_400Hz);
+	
   if(response==MEMS_ERROR) while(1); //manage here comunication error
 
   /* Set SigMotion Event */
@@ -3753,7 +3767,30 @@ void  Loop_Test_Pedometer(void)
   //RegisterInterrupt(LIS2DS12_ACC_GYRO_Pedo_Callback);
 
 }
+//-----------------------------------------------------
+//flag:0-lp min,1-lp middle,2-lp max
+void switch_lp_mode(uint8_t flag)
+{
+	//lp
+	if(flag==0)
+		response=LIS2DS12_ACC_W_ODR(LIS2DS12_ACC_ODR_LP_10bit_100Hz);
+	else if(flag==1)
+	{	
+		response=LIS2DS12_ACC_W_ODR(LIS2DS12_ACC_ODR_LP_10bit_400Hz);
+	}
+	else if(flag==2)
+		response=LIS2DS12_ACC_W_ODR(LIS2DS12_ACC_ODR_LP_10bit_800Hz);
 
+}
+//----------------------------------------------------
+/*********************************
+x.y.z Sample
+*********************************/
+void LIS2DS12_ACC_sample_Callback(uint32_t * g_buffer)
+{
+   LIS2DS12_ACC_Get_Acceleration(g_buffer);
+}
+//------------------------------------------------------
 /*********************************
 TAP
 *********************************/

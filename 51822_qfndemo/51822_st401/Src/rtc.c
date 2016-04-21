@@ -38,6 +38,7 @@
 /* USER CODE BEGIN 0 */
 
 volatile uint8_t current_datetime[7]={16,1,1,10,10,10,1};//current datetime,first 6 member date time;last member week
+extern volatile uint8_t rtc_flag;//rtc alarm flag
 
 
 /* USER CODE END 0 */
@@ -62,24 +63,24 @@ void MX_RTC_Init(void)
   hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
   HAL_RTC_Init(&hrtc);
 
-  sTime.Hours = 10;
-  sTime.Minutes = 10;
-  sTime.Seconds = 10;
+  sTime.Hours = 16;
+  sTime.Minutes = 52;
+  sTime.Seconds = 30;
   sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
   sTime.StoreOperation = RTC_STOREOPERATION_RESET;
   HAL_RTC_SetTime(&hrtc, &sTime, FORMAT_BIN);
 
-  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
-  sDate.Month = RTC_MONTH_JANUARY;
-  sDate.Date = 1;
+  sDate.WeekDay = RTC_WEEKDAY_WEDNESDAY;
+  sDate.Month = RTC_MONTH_APRIL;
+  sDate.Date = 20;
   sDate.Year = 16;
 
   HAL_RTC_SetDate(&hrtc, &sDate, FORMAT_BIN);
 
     /**Enable the Alarm A 
     */
-  sAlarm.AlarmTime.Hours = 10;
-  sAlarm.AlarmTime.Minutes = 10;
+  sAlarm.AlarmTime.Hours = 16;
+  sAlarm.AlarmTime.Minutes = 52;
   sAlarm.AlarmTime.Seconds = 40;
   sAlarm.AlarmTime.SubSeconds = 0;
   sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
@@ -206,7 +207,7 @@ void RTC_Read_datetime(uint8_t * data,uint8_t flag)
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 {
   	Info_Handler("alarm");
-		
+		rtc_flag=1;
 		send_message(2);
 
 }

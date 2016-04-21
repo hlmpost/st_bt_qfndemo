@@ -36,6 +36,17 @@ void JumpToApp(void)
 {
 
 	 uint32_t temp= *(vu32*)FLASH_ROM_SECTOR_ADDR;
+	//as7000 power up for as7000 burn
+	#if 0
+	 HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
+	while(1)
+	{
+	 
+		HAL_Delay(2000);
+
+	}
+	#endif
+
     if (((*(vu32*)FLASH_ROM_SECTOR_ADDR) & 0x2FFE0000 ) == 0x20000000)
     {
 				HAL_UART_DeInit(&huart2);

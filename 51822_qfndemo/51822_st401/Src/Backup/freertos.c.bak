@@ -58,12 +58,14 @@ extern RTC_HandleTypeDef hrtc;
 osThreadId Lcd_disp_TaskHandle;//display
 osThreadId touch_TaskHandle;//touch
 osThreadId sensor_TaskHandle;//touch
-osThreadId uart_TaskHandle;
+osThreadId uart_TaskHandle;//uart
+osThreadId button_TaskHandle;//button
 
 void func_DispTask(void const * argument);
 void func_touchTask(void const * argument);
 void func_sensorTask(void const * argument);
 void func_uartTask(void const * argument);
+void func_buttonTask(void const * argument);
 
 volatile uint8_t init_finish=0;
 
@@ -72,10 +74,20 @@ extern volatile uint8_t current_datetime[];//current datetime
 
 
 volatile uint8_t sensor_flag=0;
-volatile uint8_t current_mode=1;//normal,sport,sleep
+volatile uint8_t current_mode=0;//normal=0,sport=1,sleep=2
 volatile uint8_t batt_status=50;//current battery percent
 volatile uint8_t disp_sort=0;//display lcd sortno,0-time ,1-step,2-hrs,3-consume
 volatile uint8_t step_len=50;//step length
+
+volatile uint8_t rtc_flag=50;//rtc alarm flag
+
+volatile uint8_t disp_flag=0;//displaying lcd,don't do other
+
+volatile uint8_t button_flag=0;//button busy flag
+
+//timer
+static osTimerId sport_timer_id;
+static void Timer_Callback  (void const *arg);
 
 stru_region current_sensor_data;
 /* USER CODE END Variables */
@@ -107,29 +119,17 @@ void send_message(uint8_t message)
 		osSignalSet(sensor_TaskHandle, message);
 	else if(message==3)//uart
 		osSignalSet(uart_TaskHandle, message);
+	else if(message==4)//display
+		osSignalSet(Lcd_disp_TaskHandle, message);
+	else if(message==5)//button
+		osSignalSet(button_TaskHandle, message);
 
 }
 //---------------------------------------------------------
 
 /* USER CODE END FunctionPrototypes */
 
-/* Pre/Post sleep processing prototypes */
-void PreSleepProcessing(uint32_t *ulExpectedIdleTime);
-void PostSleepProcessing(uint32_t *ulExpectedIdleTime);
-
 /* Hook prototypes */
-
-/* USER CODE BEGIN PREPOSTSLEEP */
-void PreSleepProcessing(uint32_t *ulExpectedIdleTime)
-{
-/* place for user code */ 
-}
-
-void PostSleepProcessing(uint32_t *ulExpectedIdleTime)
-{
-/* place for user code */
-}
-/* USER CODE END PREPOSTSLEEP */
 
 /* Init FreeRTOS */
 
@@ -182,6 +182,7 @@ void StartDefaultTask(void const * argument)
 	//Loop_Test_Tap();
 	Loop_Test_Pedometer();
 	
+	
 	if(iqs263_init()==0)
 		Error_Handler("tp is error!");
 	else
@@ -192,6 +193,7 @@ void StartDefaultTask(void const * argument)
 	flash_init();
 	//lcd init
 	lcd_init();
+	//display default lcd
 
 	//display thread
 	osThreadDef(disp_Task, func_DispTask, osPriorityNormal, 0, 128);
@@ -205,6 +207,13 @@ void StartDefaultTask(void const * argument)
 	//uart thread
 	osThreadDef(uart_tTask, func_uartTask, osPriorityNormal, 0, 128);
   uart_TaskHandle = osThreadCreate(osThread(uart_tTask), NULL);
+	//button thread
+	osThreadDef(button_tTask, func_buttonTask, osPriorityNormal, 0, 128);
+  button_TaskHandle = osThreadCreate(osThread(button_tTask), NULL);
+
+	//timer init
+	osTimerDef(sport_timer_id, Timer_Callback);
+	sport_timer_id = osTimerCreate(osTimer(sport_timer_id), osTimerPeriodic, NULL);
 
 	init_finish=1;//init finish
 	osThreadTerminate(defaultTaskHandle);
@@ -222,68 +231,17 @@ void StartDefaultTask(void const * argument)
 //lcd disp thread
 void func_DispTask(void const * argument)
 {
-	//lcd_init();
-	while(1)
-	{
-		osDelay(2000);
-		//osSignalWait(0x1, osWaitForever);
-		//lcd_test();
-  
-	//marquee();
-//osMutexWait(rtc_mutex, osWaitForever);
-			/* Get the RTC current Time */
-
-
-
-	}
-}
-//-------------------------------------------------------------------
-//touch thread
-void func_touchTask(void const * argument)
-{
-	while(1)
-	{
-		osSignalWait(0x1, osWaitForever);
-		handleEvents();
-	}
-
-}
-//------------------------------------------------------------------
-//sensor thread
-void func_sensorTask(void const * argument)
-{
-	uint8_t curr_time[3],hour,min;
-	uint8_t flag=4;
 	char data[10];
+	uint8_t count=0;//10 times,gc4 update
 
+	//display lcd default datetime
+	send_message(4);
 	while(1)
 	{
-		osSignalWait(0x2, osWaitForever);
-		sensor_flag=1;
-		//osDelay(2000);
-		//step
-		LIS2DS12_ACC_GYRO_Pedo_Callback();
-		//hrs
-		
-		current_sensor_data.hrs_rate=50;
-
-		if(current_mode==1)//normal
-			current_sensor_data.sleep_status=0xffffffff;
-		else if(current_mode==3)//sleep
-			current_sensor_data.step_count=0xffff;
-		 
-		current_sensor_data.bld_press=0xff;//now we have not blood pressure
-
-		flash_write_movedata(&current_sensor_data);
-		
-//				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-//				osDelay(2000);
-//				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-//				led_flash(flag);
-//				flag--;
-//		    if(flag<1)
-//					flag=4;
-		//sprintf(data,"%d",current_sensor_data.step_count);
+		osSignalWait(0x4, osWaitForever);
+		disp_flag=1;
+		#if 1
+		disp_sort=1;
 		read_batt();
 		lcd_display_on(1);
 		lcd_disp_clear();
@@ -325,12 +283,92 @@ void func_sensorTask(void const * argument)
 			lcd_disp_number(10,170,data,29,12);
 			
 		}
+		//current_mode
+		sprintf(data,"%d",current_mode);
+		lcd_disp_number(1,1,data,29,12);
 		lcd_disp_battery(batt_status);
-		lcd_display_update(2);
+
+		count++;
+		if(count>9)
+		{	
+			count=0;
+			lcd_display_update(1);
+		}
+		else
+			lcd_display_update(2);
+
 		lcd_display_on(0);
-		disp_sort++;
-		if(disp_sort>3)
-			disp_sort=0;
+	  #endif
+		disp_flag=0;
+	}
+}
+//-------------------------------------------------------------------
+//touch thread
+void func_touchTask(void const * argument)
+{
+	uint8_t temp=0,old_disp_sort=0;
+	while(1)
+	{
+		osSignalWait(0x1, osWaitForever);
+		temp=handleEvents();
+		if(disp_flag==1)
+			continue;
+		old_disp_sort=disp_sort;
+		if(temp==2)//left
+		{
+			if(disp_sort>0)
+				disp_sort--;
+		}
+		else if(temp==3)//right
+		{
+			if(disp_sort<3)
+				disp_sort++;
+		}
+		//if(disp_sort!=old_disp_sort)
+		//	send_message(4);
+
+	}
+
+}
+//------------------------------------------------------------------
+//sensor thread
+void func_sensorTask(void const * argument)
+{
+	uint8_t curr_time[3],hour,min;
+	uint8_t flag=4;
+
+	while(1)
+	{
+		osSignalWait(0x2, osWaitForever);
+		sensor_flag=1;
+		//osDelay(2000);
+		//step
+		LIS2DS12_ACC_GYRO_Pedo_Callback();
+		//hrs
+		//current_sensor_data.hrs_rate=as7000_hrs_rate();
+
+		if(current_mode==0)//normal
+			current_sensor_data.sleep_status=0xffffffff;
+		else if(current_mode==2)//sleep
+			current_sensor_data.step_count=0xffff;
+		 
+		current_sensor_data.bld_press=0xff;//now we have not blood pressure
+		if(rtc_flag==1)
+		{
+			flash_write_movedata(&current_sensor_data);
+			rtc_flag=0;
+		}
+//				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
+//				osDelay(2000);
+//				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+//				led_flash(flag);
+//				flag--;
+//		    if(flag<1)
+//					flag=4;
+		//sprintf(data,"%d",current_sensor_data.step_count);
+		if(disp_sort==0 || disp_sort==1 || disp_sort==2 || disp_sort==3)
+			if(disp_flag==0)
+				send_message(4);
 		sensor_flag=0;
 		
 
@@ -348,7 +386,62 @@ void func_uartTask(void const * argument)
 		//send_shakehand(1);
 	}
 }
+//---------------------------------------------------------------
+static void Timer_Callback  (void const *arg)
+{
+	if(sensor_flag==0)
+			send_message(2);
+}
+//----------------------------------------------------------------------
+//button thread
+void func_buttonTask(void const * argument)
+{
+  uint8_t i=0;
+  GPIO_InitTypeDef GPIO_InitStruct;
+	while(1)
+	{
+		osSignalWait(0x5, osWaitForever);
+		button_flag=1;
+		//interrupt to gpio
+		GPIO_InitStruct.Pin = GPIO_PIN_9;
+		GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+		GPIO_InitStruct.Pull = GPIO_PULLUP;
+		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+		//judge button valid
+		for(i=0;i<10;i++)
+		{	
+			if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)==GPIO_PIN_SET)
+				break;
+			osDelay(15);
+		}
+		if(i==10)//button is valid
+		{
+			if(current_mode<2)
+				current_mode++;
+			else
+				current_mode=0;
+			if(current_mode==1)//sport mode
+			{
+				//5s read sensor a time
+				osTimerStart(sport_timer_id, 5000);
+			}
+			else
+			{
+				 osTimerStop(sport_timer_id);
+			}
+			send_message(4);
+		}
+		SEGGER_RTT_printf(0,"current_mode=%d!\r\n",current_mode);	
+
+		GPIO_InitStruct.Pin = GPIO_PIN_9;
+		GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+		GPIO_InitStruct.Pull = GPIO_PULLUP;
+		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+		button_flag=0;
+
+	}
+}
 /* USER CODE END Application */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

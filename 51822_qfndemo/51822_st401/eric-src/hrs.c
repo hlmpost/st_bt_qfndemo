@@ -80,9 +80,8 @@ static void as7000_ReadBytes(unsigned char address,unsigned char* data)
 //--------------------------------------------
 unsigned char as7000_init()
 {
-//as7000_power(1);
-//osDelay(5000);
-//as7000_sleep(0);
+as7000_power(1);
+as7000_sleep(0);
 osDelay(3000);
 
 as7000_ReadBytes(0x00,&data_buffer[0]);
@@ -106,36 +105,35 @@ else
 unsigned char as7000_hrs_rate()
 {
 uint8_t i=0,flag=0;;
+uint16_t total=0;
+uint8_t hrs_min=0xff,hrs_max=0,hrs_rate=0;
 as7000_power(1);
-osDelay(1000);
-as7000_init();
+osDelay(2000);
+//as7000_init();
 while(1)
 {
-as7000_ReadBytes(0x08,&data_buffer[0]);
-as7000_ReadBytes(0x09,&data_buffer[1]);
-as7000_ReadBytes(0x0a,&data_buffer[2]);
-as7000_ReadBytes(0x0b,&data_buffer[3]);
-as7000_ReadBytes(0x0c,&data_buffer[4]);
-as7000_ReadBytes(0x0d,&data_buffer[5]);
-as7000_ReadBytes(0x0e,&data_buffer[6]);
-if(data_buffer[1]>0 && i==0)
-{	
-	flag=1;
-}
-if(flag==1)
-{
+	as7000_ReadBytes(0x08,&data_buffer[0]);
+	as7000_ReadBytes(0x09,&data_buffer[1]);
+	as7000_ReadBytes(0x0a,&data_buffer[2]);
+	as7000_ReadBytes(0x0b,&data_buffer[3]);
+	as7000_ReadBytes(0x0c,&data_buffer[4]);
+	as7000_ReadBytes(0x0d,&data_buffer[5]);
+	as7000_ReadBytes(0x0e,&data_buffer[6]);
 	i++;
-	if(i>4)
+	total+=data_buffer[2];
+	if(data_buffer[2]<hrs_min)
+		hrs_min=data_buffer[2];
+	if(data_buffer[2]>hrs_max)
+		hrs_max=data_buffer[2];
+	if(i>10)
+	{
+		hrs_rate=(total-hrs_min-hrs_max)/8;
 		break;
-}
-osDelay(1000);
+	}
+	osDelay(200);
 
 }
-
 as7000_power(0);
-
-SEGGER_RTT_printf(0,"hrs:%d;status=%d,count=%d\r\n",data_buffer[2],data_buffer[1],i);			
-
-return data_buffer[2];
+return hrs_rate;
 
 }

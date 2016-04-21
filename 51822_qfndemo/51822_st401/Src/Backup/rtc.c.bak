@@ -37,7 +37,8 @@
 
 /* USER CODE BEGIN 0 */
 
-volatile uint8_t current_datetime[7];//current datetime,first 6 member date time;last member week
+volatile uint8_t current_datetime[7]={16,1,1,10,10,10,1};//current datetime,first 6 member date time;last member week
+extern volatile uint8_t rtc_flag;//rtc alarm flag
 
 
 /* USER CODE END 0 */
@@ -206,7 +207,7 @@ void RTC_Read_datetime(uint8_t * data,uint8_t flag)
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 {
   	Info_Handler("alarm");
-		
+		rtc_flag=1;
 		send_message(2);
 
 }
