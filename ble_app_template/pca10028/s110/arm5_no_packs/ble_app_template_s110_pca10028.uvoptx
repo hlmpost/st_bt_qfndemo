@@ -150,7 +150,7 @@
           <Number>0</Number>
           <Type>0</Type>
           <LineNumber>243</LineNumber>
-          <EnabledFlag>1</EnabledFlag>
+          <EnabledFlag>0</EnabledFlag>
           <Address>124340</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
@@ -161,6 +161,22 @@
           <Filename>E:\椤圭洰\51822\test\nRF51_SDK_10\components\softdevice\common\softdevice_handler\softdevice_handler.c</Filename>
           <ExecCommand></ExecCommand>
           <Expression></Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>84</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>122490</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>E:\椤圭洰\51822\test\nRF51_SDK_10\examples\ble_peripheral\ble_app_template\src\comm.c</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\nrf51422_xxac_s110\../../../src/comm.c\84</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow2>

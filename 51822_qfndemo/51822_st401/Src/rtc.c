@@ -36,9 +36,13 @@
 #include "rtc.h"
 
 /* USER CODE BEGIN 0 */
+#include "cmsis_os.h"
 
 volatile uint8_t current_datetime[7]={16,1,1,10,10,10,1};//current datetime,first 6 member date time;last member week
 extern volatile uint8_t rtc_flag;//rtc alarm flag
+extern volatile uint8_t sensor_flag;
+//mutex
+osMutexId  rtc_mutex;
 
 
 /* USER CODE END 0 */
@@ -92,6 +96,14 @@ void MX_RTC_Init(void)
   sAlarm.Alarm = RTC_ALARM_A;
   HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, FORMAT_BIN);
 
+    /**Enable the WakeUp 
+    */
+  HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 10240, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
+	
+	/* USER CODE BEGIN 10 */
+  HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+	/* USER CODE END 10 */
+
 }
 
 void HAL_RTC_MspInit(RTC_HandleTypeDef* hrtc)
@@ -106,6 +118,8 @@ void HAL_RTC_MspInit(RTC_HandleTypeDef* hrtc)
     __HAL_RCC_RTC_ENABLE();
 
     /* Peripheral interrupt init*/
+    HAL_NVIC_SetPriority(RTC_WKUP_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(RTC_WKUP_IRQn);
     HAL_NVIC_SetPriority(RTC_Alarm_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(RTC_Alarm_IRQn);
   /* USER CODE BEGIN RTC_MspInit 1 */
@@ -126,6 +140,8 @@ void HAL_RTC_MspDeInit(RTC_HandleTypeDef* hrtc)
     __HAL_RCC_RTC_DISABLE();
 
     /* Peripheral interrupt Deinit*/
+    HAL_NVIC_DisableIRQ(RTC_WKUP_IRQn);
+
     HAL_NVIC_DisableIRQ(RTC_Alarm_IRQn);
 
   }
@@ -178,6 +194,7 @@ void RTC_Read_datetime(uint8_t * data,uint8_t flag)
 //osMutexWait(rtc_mutex, osWaitForever);
 	if(data!=NULL)
 	{	
+		osMutexWait(rtc_mutex, osWaitForever);
 		/* Get the RTC current Time */
 		HAL_RTC_GetTime(&hrtc, &stimestructureget, RTC_FORMAT_BIN);
 		temp[0]=stimestructureget.Hours;
@@ -194,6 +211,7 @@ void RTC_Read_datetime(uint8_t * data,uint8_t flag)
 		current_datetime[6]=sdatestructureget.WeekDay;
 
 		memcpy(&current_datetime[0],data,3);
+		osMutexRelease(rtc_mutex);
 
 		if(flag==1)
 		{
@@ -201,6 +219,39 @@ void RTC_Read_datetime(uint8_t * data,uint8_t flag)
 		}
 	}
 	//osMutexRelease(rtc_mutex);
+}
+//------------------------------------------------------------------
+void RTC_Set_datetime(uint8_t * data)
+{
+	RTC_DateTypeDef sdatestructure;
+  RTC_TimeTypeDef stimestructure;
+	if(data!=NULL)
+	{
+		osMutexWait(rtc_mutex, osWaitForever);
+
+			sdatestructure.Year =data[0];
+			sdatestructure.Month = data[1];
+			sdatestructure.Date = data[2];
+
+			if(HAL_RTC_SetDate(&hrtc,&sdatestructure,RTC_FORMAT_BIN) != HAL_OK)
+			{
+				/* Initialization Error */
+				Error_Handler("set time error"); 
+			} 
+			stimestructure.Hours = data[3];
+			stimestructure.Minutes = data[4];
+			stimestructure.Seconds = data[5];
+			stimestructure.TimeFormat = RTC_HOURFORMAT12_AM;
+			stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+			stimestructure.StoreOperation = RTC_STOREOPERATION_RESET;
+			if(HAL_RTC_SetTime(&hrtc,&stimestructure,RTC_FORMAT_BIN) != HAL_OK)
+				{
+					/* Initialization Error */
+					Error_Handler("set date error"); 
+				}		
+			osMutexRelease(rtc_mutex);
+
+	}//data=null
 }
 //----------------------------------------------------------------
 //alarm callback
@@ -211,7 +262,30 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 		send_message(2);
 
 }
+//------------------------------------------------------------
+//wake up control
+void rtc_wakeup(uint8_t flag)
+{
+	if(flag==0)
+		HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+	else
+		HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 10240, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
 
+}
+void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef * hrtc)
+{
+	if(sensor_flag==0)
+	{
+		send_message(2);
+	}
+}
+//-----------------------------------------------------------
+void rtc_init()
+{
+	osMutexDef(rtc_mutex); 
+	rtc_mutex = osMutexCreate(osMutex(rtc_mutex));
+
+}
 /* USER CODE END 1 */
 
 /**

@@ -28,6 +28,10 @@ uint8_t curr_index=0;//当前正在写的信息头索引
 
 extern uint8_t alarm_flag;
 
+//mutex
+osMutexId  flash_mutex;
+
+
 //-------------------------------------------------------------------
 static uint32_t GetSector(uint32_t Address)
 {
@@ -153,7 +157,9 @@ void flash_write_movedata(stru_region * sensor_data,uint8_t mode)
 	uint16_t offset=0;//扇区偏移值
 	uint8_t* temp_add=0;
 	uint8_t hour,min;
-	
+
+	osMutexWait(flash_mutex, osWaitForever);
+
 	RTC_Read_datetime(curr_time,1);
 	
 //	if(RTC_get_state()==1)
@@ -230,15 +236,16 @@ void flash_write_movedata(stru_region * sensor_data,uint8_t mode)
 	
 	RTC_AlarmConfig(hour,min);
 	SEGGER_RTT_printf(0,"flash_write_movedata:index=%d;address=%x;time=%d:%d;write_add=0x%x,step=%d\r\n",curr_index,data_header[curr_index].start_add,curr_time[0],curr_time[1],temp_add,sensor_data->step_count);
-
+	
+	osMutexRelease(flash_mutex);
 }
 
-//----------------------------------------------------------------------
-
-void flash_init()
+//--------------------------------------------------------------------
+void flash_format()
 {
-	
-	/* Unlock the Flash to enable the flash control register access *************/ 
+	osMutexWait(flash_mutex, osWaitForever);
+
+		/* Unlock the Flash to enable the flash control register access *************/ 
   HAL_FLASH_Unlock();
     
   /* Erase the user Flash area
@@ -291,4 +298,15 @@ void flash_init()
   /* Lock the Flash to disable the flash control register access (recommended
      to protect the FLASH memory against possible unwanted operation) *********/
   HAL_FLASH_Lock(); 
+	osMutexRelease(flash_mutex);
+
+}
+//----------------------------------------------------------------------
+
+void flash_init()
+{
+	osMutexDef(flash_mutex); 
+	flash_mutex = osMutexCreate(osMutex(flash_mutex));
+	flash_format();
+
 }

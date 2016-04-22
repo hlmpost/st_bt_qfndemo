@@ -933,6 +933,7 @@ int main(void)
 { 
     uint32_t err_code;
     bool erase_bonds;
+	
 	//-----------------------------------------------
 	
 #if 1
@@ -972,17 +973,15 @@ SEGGER_RTT_Init();
 
 	timers_init();
 		
-
-
-    // Initialize.
-    ble_stack_init();
+  // Initialize.
+  ble_stack_init();
 	//eric-han for wechat
 	get_mac_addr(m_addl_adv_manuf_data);
 	
     device_manager_init(erase_bonds);
     gap_params_init();
     services_init();
-	advertising_init();
+	  advertising_init();
     conn_params_init();
  
     // Start execution.
@@ -998,6 +997,8 @@ SEGGER_RTT_Init();
 					rece_dispatch(buffer);
 					rece_flag=0;
 				}
+				//eric_uart_send(buffer,6);
+			  //nrf_delay_ms(2000);
         power_manage();
     }
 }

@@ -79,7 +79,7 @@ volatile uint8_t batt_status=50;//current battery percent
 volatile uint8_t disp_sort=0;//display lcd sortno,0-time ,1-step,2-hrs,3-consume
 volatile uint8_t step_len=50;//step length
 
-volatile uint8_t rtc_flag=50;//rtc alarm flag
+volatile uint8_t rtc_flag=0;//rtc alarm flag
 
 volatile uint8_t disp_flag=0;//displaying lcd,don't do other
 
@@ -87,7 +87,7 @@ volatile uint8_t button_flag=0;//button busy flag
 
 //timer
 static osTimerId sport_timer_id;
-static void Timer_Callback  (void const *arg);
+//static void Timer_Callback  (void const *arg);
 
 
 
@@ -134,55 +134,7 @@ void send_message(uint8_t message)
 
 /* USER CODE END FunctionPrototypes */
 
-/* Pre/Post sleep processing prototypes */
-void PreSleepProcessing(uint32_t *ulExpectedIdleTime);
-void PostSleepProcessing(uint32_t *ulExpectedIdleTime);
-
 /* Hook prototypes */
-
-/* USER CODE BEGIN PREPOSTSLEEP */
-static uint8_t sleep_count=0,wake_count=0;
-void PreSleepProcessing(uint32_t *ulExpectedIdleTime)
-{
-	if(init_finish<1)
-		return;
-/* place for user code */ 
-	
-	sleep_count++;
-		SEGGER_RTT_printf(0,"PreSleepProcessing:%d\r\n",sleep_count);	
-	if(sleep_count>250)
-		sleep_count=1;
-	
-	__GPIOC_CLK_DISABLE();
-  __GPIOA_CLK_DISABLE();
-  __GPIOB_CLK_DISABLE();
-	HAL_PWREx_EnableFlashPowerDown();
-	  
-  /* Set SLEEPDEEP bit of Cortex System Control Register */
-  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-
-
-}
-
-void PostSleepProcessing(uint32_t *ulExpectedIdleTime)
-{
-	if(init_finish<1)
-		return;
-
-	 CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));  
-/* place for user code */
-  SystemClock_Config();
-
-  __GPIOC_CLK_ENABLE();
-  __GPIOA_CLK_ENABLE();
-  __GPIOB_CLK_ENABLE();
-	
-		wake_count++;
-		SEGGER_RTT_printf(0,"PostSleepProcessing:%d\r\n",wake_count);	
-	if(wake_count>250)
-		wake_count=1;
-}
-/* USER CODE END PREPOSTSLEEP */
 
 /* Init FreeRTOS */
 
@@ -245,7 +197,8 @@ void StartDefaultTask(void const * argument)
 	flash_init();
 	//lcd init
 	lcd_init();
-	//display default lcd
+	//rtc
+	rtc_init();
 
 	//display thread
 	osThreadDef(disp_Task, func_DispTask, osPriorityNormal, 0, 128);
@@ -264,8 +217,8 @@ void StartDefaultTask(void const * argument)
   button_TaskHandle = osThreadCreate(osThread(button_tTask), NULL);
 
 	//timer init
-	osTimerDef(sport_timer_id, Timer_Callback);
-	sport_timer_id = osTimerCreate(osTimer(sport_timer_id), osTimerPeriodic, NULL);
+//	osTimerDef(sport_timer_id, Timer_Callback);
+//	sport_timer_id = osTimerCreate(osTimer(sport_timer_id), osTimerPeriodic, NULL);
 
 	init_finish=1;//init finish
 	osThreadTerminate(defaultTaskHandle);
@@ -279,12 +232,14 @@ void StartDefaultTask(void const * argument)
 }
 
 /* USER CODE BEGIN Application */
-//-------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------
 //lcd disp thread
 void func_DispTask(void const * argument)
 {
 	char data[10];
 	uint8_t count=0;//10 times,gc4 update
+	uint8_t old_batt_status=0;
 
 	//display lcd default datetime
 	send_message(4);
@@ -430,7 +385,6 @@ void func_sensorTask(void const * argument)
 			current_sensor_data.step_count=step_count_1min;
 			flash_write_movedata(&current_sensor_data,current_mode);
 			step_count_1min=0;
-			rtc_flag=0;
 		}
 //				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
 //				osDelay(2000);
@@ -440,7 +394,8 @@ void func_sensorTask(void const * argument)
 //		    if(flag<1)
 //					flag=4;
 		//sprintf(data,"%d",current_sensor_data.step_count);
-		if(current_mode!=2 && current_step_count==0 && disp_sort==1)//no move,in step lcd
+		//if rtc_flag=1 force flash lcd for display status
+		if(current_mode!=2 && current_step_count==0 && disp_sort==1 && rtc_flag==0)//no move,in step lcd,no flash
 		{	
 			current_step_count=0;
 			//test
@@ -451,6 +406,9 @@ void func_sensorTask(void const * argument)
 			if(disp_flag==0)
 				send_message(4);
 		}
+		
+		if(rtc_flag==1)
+			rtc_flag=0;
 		sensor_flag=0;
 		
 
@@ -464,16 +422,17 @@ void func_uartTask(void const * argument)
 	while(1)
 	{
 		osSignalWait(0x3, osWaitForever);
-		send_sensor_data();
+		//send_sensor_data();
 		//send_shakehand(1);
+		rece_dispatch();
 	}
 }
 //---------------------------------------------------------------
-static void Timer_Callback  (void const *arg)
-{
-	if(sensor_flag==0)
-			send_message(2);
-}
+//static void Timer_Callback  (void const *arg)
+//{
+//	if(sensor_flag==0)
+//			send_message(2);
+//}
 //----------------------------------------------------------------------
 //button thread
 void func_buttonTask(void const * argument)
@@ -496,7 +455,7 @@ void func_buttonTask(void const * argument)
 			if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)==GPIO_PIN_SET)
 				break;
 			//osDelay(15);
-					HAL_Delay(15);
+				HAL_Delay(10);
 		}
 		if(i==10)//button is valid
 		{
@@ -508,11 +467,13 @@ void func_buttonTask(void const * argument)
 			if(current_mode==1)//sport mode
 			{
 				//5s read sensor a time
-				osTimerStart(sport_timer_id, 5000);
+				//osTimerStart(sport_timer_id, 5000);
+				rtc_wakeup(1);
 			}
 			else
 			{
-				 osTimerStop(sport_timer_id);
+				 //osTimerStop(sport_timer_id);
+				rtc_wakeup(0);
 			}
 			send_message(4);
 		}

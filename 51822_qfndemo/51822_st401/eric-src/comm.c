@@ -15,7 +15,7 @@ extern volatile uint8_t current_mode;//normal,sport,sleep
 extern volatile uint8_t batt_status;//current battery percent
 
 
-//extern stru_para sys_para;
+extern stru_para sys_para;
 
 //记录版本信息
 static uint8_t * serian_no=(uint8_t *)(0x1FFF7A10);//硬件序列号
@@ -100,9 +100,8 @@ void send_sensor_data()
 	uint8_t i=0;
 	buffer[0]=0xfe;
 	buffer[1]=0x05;
-	buffer[2]=0xaa;//command
+	buffer[2]=0x06;//command
 	buffer[3]=0x05;
-	current_sensor_data.step_count++;
 	if(current_mode==3)
 		temp=(uint8_t *)&(current_sensor_data.sleep_status);
 	else
@@ -145,43 +144,44 @@ uint16_t get_len(uint8_t *data)
 //-----------------------------------------------------
 //处理接收到的数据
 //return:1-收到命令正确；0-收到命令错误
-void rece_dispatch(uint8_t *data)
+void rece_dispatch()
 {
-	uint8_t len=data[0];
+	uint8_t len=buffer[0];
 	uint8_t error=0;;
-	if(data[1]!=0xfe || data[2]!=0x04 || (data[len]!=check_sum(&data[1],len-1)) )
+	if(buffer[1]!=0xfe || buffer[2]!=0x04 || (buffer[len]!=check_sum(&buffer[1],len-1)) )
 	{
 		//收到错误命令回复
 		send_shakehand(0);
 	}
 	//解析命令
-	switch(data[3])
+	switch(buffer[3])
 	{
 		case 0x01://确认命令
 			break;
 		case 0x02://初始化flash存储区
-			//flash_init();
+			flash_init();
 			break;
 		case 0x03://收到时间设置命令
-			//RTC_Set_datetime(&data[5]);
-			//RTC_AlarmConfig(data[8],data[9]+1);
-			//SEGGER_RTT_printf(0,"set_time=%02d-%02d-%02d;%02d-%02d-%02d;\r\n",data[5],data[6],data[7],data[8],data[9],data[10]);
+			RTC_Set_datetime(&buffer[5]);
+			RTC_AlarmConfig(buffer[8],buffer[9]+1);
+			SEGGER_RTT_printf(0,"set_time=%02d-%02d-%02d;%02d-%02d-%02d;\r\n",buffer[5],buffer[6],buffer[7],buffer[8],buffer[9],buffer[10]);
 			break;
 		case 0x04://step length
-			//sys_para.step_len=data[5];
+			sys_para.step_len=buffer[5];
+			sys_para.height=*(uint16_t *)(&buffer[6]);
 			//flash_erase_para_sector();
 			break;
 		case 0x05://return serial number
 			send_version_info();		
 			break;
 		case 0x0a://模式切换
-			if(data[5]>0x03)
+			if(buffer[5]>0x03)
 				error=1;
 			else
-				curr_mode=data[5];
+				curr_mode=buffer[5];
 			break;
-		case 0x06://启动批量传输
-			bat_upload=1;
+		case 0x06://read now  sports data
+			send_sensor_data();
 			break;
 		case 0x09://中断批量传输
 			bat_upload=0;
@@ -190,7 +190,7 @@ void rece_dispatch(uint8_t *data)
 			send_shakehand(0);//收到异常命令S
 			return;
 	};
-	if(data[3]!=0x01)
+	if(buffer[3]!=0x01)
 	{
 		//回复确认收到
 		if(error==0)

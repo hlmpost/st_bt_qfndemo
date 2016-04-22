@@ -34,7 +34,10 @@ typedef struct
 //存储在flash中，记录一些参数，如步数
 typedef struct
 {
-	uint8_t * step_len;//step length,单位 cm
+	uint8_t   step_len;//step length,单位 cm
+	uint16_t  height;//person height
+	uint8_t   bt_name[8];
+	
 } stru_para;
 
 //日期时间对应结构
