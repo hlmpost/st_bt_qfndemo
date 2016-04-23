@@ -60,12 +60,15 @@ osThreadId touch_TaskHandle;//touch
 osThreadId sensor_TaskHandle;//touch
 osThreadId uart_TaskHandle;//uart
 osThreadId button_TaskHandle;//button
+osThreadId wake_TaskHandle;//wake
+
 
 void func_DispTask(void const * argument);
 void func_touchTask(void const * argument);
 void func_sensorTask(void const * argument);
 void func_uartTask(void const * argument);
 void func_buttonTask(void const * argument);
+void func_wakeTask(void const * argument);
 
 volatile uint8_t init_finish=0;
 
@@ -118,6 +121,8 @@ void Info_Handler(char * info)
 //send message func
 void send_message(uint8_t message)
 {
+	if(init_finish<1)//must
+		return;
 	if(message==1)//touch
 		osSignalSet(touch_TaskHandle, message);
 	else if(message==2)//sensor
@@ -128,13 +133,70 @@ void send_message(uint8_t message)
 		osSignalSet(Lcd_disp_TaskHandle, message);
 	else if(message==5)//button
 		osSignalSet(button_TaskHandle, message);
-
+	else if(message==6)//wake up
+		osSignalSet(wake_TaskHandle, message);
 }
 //---------------------------------------------------------
 
 /* USER CODE END FunctionPrototypes */
 
+/* Pre/Post sleep processing prototypes */
+void PreSleepProcessing(uint32_t *ulExpectedIdleTime);
+void PostSleepProcessing(uint32_t *ulExpectedIdleTime);
+
 /* Hook prototypes */
+
+/* USER CODE BEGIN PREPOSTSLEEP */
+void PreSleepProcessing(uint32_t *ulExpectedIdleTime)
+{
+
+	if(init_finish<1)
+		return;
+/* place for user code */ 
+	osThreadSuspendAll();
+//	sleep_count++;
+//		SEGGER_RTT_printf(0,"PreSleepProcessing:%d\r\n",sleep_count);	
+//	if(sleep_count>250)
+//		sleep_count=1;
+	
+		__GPIOC_CLK_DISABLE();
+  __GPIOA_CLK_DISABLE();
+  __GPIOB_CLK_DISABLE();
+
+	HAL_PWREx_EnableFlashPowerDown();
+	  
+	
+
+  /* Set SLEEPDEEP bit of Cortex System Control Register */
+	MODIFY_REG(PWR->CR, (PWR_CR_PDDS | PWR_CR_LPDS), PWR_LOWPOWERREGULATOR_ON);
+  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+
+
+}
+
+void PostSleepProcessing(uint32_t *ulExpectedIdleTime)
+{
+	if(init_finish<1)
+		return;
+
+	 CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));  
+	
+
+/* place for user code */
+  SystemClock_Config();
+	
+  __GPIOC_CLK_ENABLE();
+  __GPIOA_CLK_ENABLE();
+  __GPIOB_CLK_ENABLE();
+	
+	osThreadResumeAll();
+	
+//		wake_count++;
+//		SEGGER_RTT_printf(0,"PostSleepProcessing:%d\r\n",wake_count);	
+//	if(wake_count>250)
+//		wake_count=1;
+}
+/* USER CODE END PREPOSTSLEEP */
 
 /* Init FreeRTOS */
 
@@ -174,6 +236,8 @@ void StartDefaultTask(void const * argument)
 
   /* USER CODE BEGIN StartDefaultTask */
 
+		//rtc
+	rtc_init();
 
   //≤‚ ‘ as7000
 	//as7000_init();
@@ -195,10 +259,6 @@ void StartDefaultTask(void const * argument)
 	
 	//flash init
 	flash_init();
-	//lcd init
-	lcd_init();
-	//rtc
-	rtc_init();
 
 	//display thread
 	osThreadDef(disp_Task, func_DispTask, osPriorityNormal, 0, 128);
@@ -215,10 +275,10 @@ void StartDefaultTask(void const * argument)
 	//button thread
 	osThreadDef(button_tTask, func_buttonTask, osPriorityNormal, 0, 128);
   button_TaskHandle = osThreadCreate(osThread(button_tTask), NULL);
+	//wake thread
+	osThreadDef(wake_tTask, func_wakeTask, osPriorityNormal, 0, 128);
+  wake_TaskHandle = osThreadCreate(osThread(wake_tTask), NULL);
 
-	//timer init
-//	osTimerDef(sport_timer_id, Timer_Callback);
-//	sport_timer_id = osTimerCreate(osTimer(sport_timer_id), osTimerPeriodic, NULL);
 
 	init_finish=1;//init finish
 	osThreadTerminate(defaultTaskHandle);
@@ -240,6 +300,9 @@ void func_DispTask(void const * argument)
 	char data[10];
 	uint8_t count=0;//10 times,gc4 update
 	uint8_t old_batt_status=0;
+	uint8_t curr_time[3];
+			//lcd init
+	lcd_init();
 
 	//display lcd default datetime
 	send_message(4);
@@ -249,8 +312,10 @@ void func_DispTask(void const * argument)
 		disp_flag=1;
 		#if 1
 		//test
-		disp_sort=1;
+		disp_sort=0;
 		read_batt();
+		RTC_Read_datetime(curr_time,1);
+
 		lcd_display_on(1);
 		lcd_disp_clear();
 		if(disp_sort==0)
@@ -401,10 +466,13 @@ void func_sensorTask(void const * argument)
 			//test
 			//send_message(4);
 		}
+		else if(rtc_flag==0 && disp_sort==0)
+		{
+		}
 		else
 		{
 			if(disp_flag==0)
-				send_message(4);
+					send_message(4);
 		}
 		
 		if(rtc_flag==1)
@@ -487,6 +555,25 @@ void func_buttonTask(void const * argument)
 
 	}
 }
+//----------------------------------------------
+//uart wakeup thread
+void func_wakeTask(void const * argument)
+{
+  
+	while(1)
+	{
+		osSignalWait(0x6, osWaitForever);
+		while(1)
+		{	
+			if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1)==GPIO_PIN_SET)
+				break;
+			HAL_Delay(5);
+		}
+
+	
+	}
+}
+
 /* USER CODE END Application */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

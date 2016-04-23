@@ -25,6 +25,7 @@
 ".\_build\ble_step.o"
 ".\_build\comm.o"
 ".\_build\eric_uart.o"
+".\_build\eric_gpio.o"
 ".\_build\segger_rtt.o"
 ".\_build\segger_rtt_printf.o"
 ".\_build\arm_startup_nrf51.o"

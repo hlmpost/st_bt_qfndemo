@@ -131,15 +131,21 @@ void eric_uart_deinit(void)
 
 void eric_uart_send(const uint8_t *buf, int size)
 {
+	//wake up st
+		//nrf_delay_ms(1000);
+	
+		GPIO_ResetBit(13);
+		nrf_delay_ms(2);
+		//test
     for (int i = 0; i < size; i++)
     {
         NRF_UART0->TXD = buf[i];
-
         while (NRF_UART0->EVENTS_TXDRDY != 1)
         {
             /* do nothing */
         }
         NRF_UART0->EVENTS_TXDRDY = 0;
-    }    
+    } 
+		GPIO_SetBit(13);//high
 }
 

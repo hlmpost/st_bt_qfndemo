@@ -141,7 +141,6 @@ void PostSleepProcessing(uint32_t *ulExpectedIdleTime);
 /* Hook prototypes */
 
 /* USER CODE BEGIN PREPOSTSLEEP */
-static uint8_t sleep_count=0,wake_count=0;
 void PreSleepProcessing(uint32_t *ulExpectedIdleTime)
 {
 
@@ -163,8 +162,8 @@ void PreSleepProcessing(uint32_t *ulExpectedIdleTime)
 	
 
   /* Set SLEEPDEEP bit of Cortex System Control Register */
-	//MODIFY_REG(PWR->CR, (PWR_CR_PDDS | PWR_CR_LPDS), PWR_LOWPOWERREGULATOR_ON);
-  //SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
+	MODIFY_REG(PWR->CR, (PWR_CR_PDDS | PWR_CR_LPDS), PWR_LOWPOWERREGULATOR_ON);
+  SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
 
 
 }
@@ -231,6 +230,8 @@ void StartDefaultTask(void const * argument)
 
   /* USER CODE BEGIN StartDefaultTask */
 
+		//rtc
+	rtc_init();
 
   //≤‚ ‘ as7000
 	//as7000_init();
@@ -254,8 +255,6 @@ void StartDefaultTask(void const * argument)
 	flash_init();
 	//lcd init
 	lcd_init();
-	//rtc
-	rtc_init();
 
 	//display thread
 	osThreadDef(disp_Task, func_DispTask, osPriorityNormal, 0, 128);
@@ -479,8 +478,9 @@ void func_uartTask(void const * argument)
 	while(1)
 	{
 		osSignalWait(0x3, osWaitForever);
-		send_sensor_data();
+		//send_sensor_data();
 		//send_shakehand(1);
+		rece_dispatch();
 	}
 }
 //---------------------------------------------------------------

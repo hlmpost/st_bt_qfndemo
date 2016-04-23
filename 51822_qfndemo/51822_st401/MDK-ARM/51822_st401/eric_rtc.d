@@ -31,6 +31,8 @@
 51822_st401\eric_rtc.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c_ex.h
 51822_st401\eric_rtc.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.h
 51822_st401\eric_rtc.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h
+51822_st401\eric_rtc.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rtc.h
+51822_st401\eric_rtc.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rtc_ex.h
 51822_st401\eric_rtc.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_spi.h
 51822_st401\eric_rtc.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h
 51822_st401\eric_rtc.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h
@@ -52,6 +54,4 @@
 51822_st401\eric_rtc.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h
 51822_st401\eric_rtc.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h
 51822_st401\eric_rtc.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h
-51822_st401\eric_rtc.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rtc.h
-51822_st401\eric_rtc.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rtc_ex.h
 51822_st401\eric_rtc.o: ..\eric-src\eric_rtc.h

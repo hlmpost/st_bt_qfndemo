@@ -3,7 +3,8 @@
 #include "nordic_common.h"
 #include "ble_srv_common.h"
 #include "app_util.h"
-#include "app_uart.h"
+//#include "app_uart.h"
+#include "eric_gpio.h"
 
 
 static uint8_t s_buffer[10];
@@ -86,3 +87,18 @@ void rece_dispatch(uint8_t *data)
 	};
 }
 
+//---------------------------------------------
+void comm_init()
+{
+	//init int pin13 to st
+	GPIO_InitType GPIO_InitStruct;
+
+	GPIO_InitStruct.dir 	= GPIO_PIN_CNF_DIR_Output;
+	GPIO_InitStruct.pull 	= GPIO_PIN_CNF_PULL_Disabled;
+	GPIO_InitStruct.drive 	= GPIO_PIN_CNF_DRIVE_S0S1;
+	GPIO_InitStruct.sense 	= GPIO_PIN_CNF_SENSE_Disabled;
+	GPIO_InitStruct.input 	= GPIO_PIN_CNF_INPUT_Disconnect;
+	GPIO_Init(13, &GPIO_InitStruct);
+	GPIO_SetBit(13);//high
+	
+}

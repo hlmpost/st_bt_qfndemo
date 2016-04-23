@@ -200,7 +200,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 							command_start=0;//restore
 					}
 					SEGGER_RTT_printf(0,"get data:%x!\r\n",temp);	
-					//HAL_UART_Receive_IT(&huart2,&temp,1);
+					HAL_UART_Receive_IT(&huart2,&temp,1);
         }
 }
 

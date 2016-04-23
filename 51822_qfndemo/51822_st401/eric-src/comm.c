@@ -164,7 +164,7 @@ void rece_dispatch()
 		case 0x03://收到时间设置命令
 			RTC_Set_datetime(&buffer[5]);
 			RTC_AlarmConfig(buffer[8],buffer[9]+1);
-			SEGGER_RTT_printf(0,"set_time=%02d-%02d-%02d;%02d-%02d-%02d;\r\n",buffer[5],buffer[6],buffer[7],buffer[8],buffer[9],buffer[10]);
+			//SEGGER_RTT_printf(0,"set_time=%02d-%02d-%02d;%02d-%02d-%02d;\r\n",buffer[5],buffer[6],buffer[7],buffer[8],buffer[9],buffer[10]);
 			break;
 		case 0x04://step length
 			sys_para.step_len=buffer[5];
@@ -190,6 +190,8 @@ void rece_dispatch()
 			send_shakehand(0);//收到异常命令S
 			return;
 	};
+		SEGGER_RTT_printf(0,"rece comm=%x;\r\n",buffer[3]);
+
 	if(buffer[3]!=0x01)
 	{
 		//回复确认收到
@@ -198,4 +200,5 @@ void rece_dispatch()
 		else
 			send_shakehand(0);
 	}
+
 }

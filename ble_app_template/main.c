@@ -970,7 +970,7 @@ int main(void)
 //------------------------------------------------------------------
 SEGGER_RTT_Init();
 	eric_uart_Init();
-
+	comm_init();
 	timers_init();
 		
   // Initialize.

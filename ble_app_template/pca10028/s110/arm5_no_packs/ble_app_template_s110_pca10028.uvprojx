@@ -1381,6 +1381,11 @@
               <FileType>1</FileType>
               <FilePath>..\..\..\src\eric_uart.c</FilePath>
             </File>
+            <File>
+              <FileName>eric_gpio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\src\eric_gpio.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -2780,6 +2785,11 @@
               <FileName>eric_uart.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\..\src\eric_uart.c</FilePath>
+            </File>
+            <File>
+              <FileName>eric_gpio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\src\eric_gpio.c</FilePath>
             </File>
           </Files>
         </Group>

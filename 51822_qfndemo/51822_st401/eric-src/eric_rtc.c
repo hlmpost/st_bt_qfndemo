@@ -1,74 +1,113 @@
 #include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
-#include "stm32f4xx_hal_rtc.h"
 #include "eric_rtc.h"
 
+static osMutexId  rtc_mutex;
 
-RTC_HandleTypeDef RtcHandle;
-//extern RTC_HandleTypeDef hrtc;
+extern RTC_HandleTypeDef hrtc;
 
-void RTC_AlarmConfig(uint8_t hour,uint8_t min);
-uint8_t alarm_flag=0;
+volatile uint8_t current_datetime[7]={16,1,1,10,10,10,1};//current datetime,first 6 member date time;last member week
+extern volatile uint8_t rtc_flag;//rtc alarm flag
+extern volatile uint8_t sensor_flag;
+extern volatile uint8_t disp_sort;//display lcd sortno,0-time ,1-step,2-hrs,3-consume
 
-//rtc alarm 同步
-osSemaphoreId osSemaphore;
-
-osMutexId  rtc_mutex;
-extern osMessageQId myQueue01Handle;
-
-#if 0
-//---------------------------------------------------------
-uint8_t RTC_get_state()
+//----------------------------------------------------
+//cal week day
+uint8_t CaculateWeekDay(uint16_t y,uint8_t m, uint8_t d)
 {
-	return HAL_RTC_GetState(&RtcHandle);
+	uint8_t week;
+	y+=2000;
+  if(m==1||m==2) {
+  m+=12;
+  y--;
+  }
+  week=(d+2*m+3*(m+1)/5+y+y/4-y/100+y/400)%7;
+	return week+1;
 
 }
+//----------------------------------------------------
+//check status
+void read_rtc_status()
+{
+			while(HAL_RTC_GetState(&hrtc)!=1);
 
-//-----------------------------------------------------------
-//flag=1-时间，2-日期
+}
+//-------------------------------------------------------
+//crycle set min alarm,now 1 min
+void RTC_AlarmConfig(uint8_t hour,uint8_t min)
+{
+  static RTC_AlarmTypeDef sAlarm;
+	HAL_RTC_DeactivateAlarm(&hrtc,RTC_ALARM_A);
+	read_rtc_status();
+	sAlarm.AlarmTime.Hours = hour;
+  sAlarm.AlarmTime.Minutes = min;
+  sAlarm.AlarmTime.Seconds = 1;
+  sAlarm.AlarmTime.SubSeconds = 0;
+  sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  sAlarm.AlarmMask = RTC_ALARMMASK_DATEWEEKDAY;
+  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+  sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+  sAlarm.AlarmDateWeekDay = 1;
+  sAlarm.Alarm = RTC_ALARM_A;
+  HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, FORMAT_BIN);
+
+
+  
+}
+//-------------------------------------------------------------------
+//read date time
 void RTC_Read_datetime(uint8_t * data,uint8_t flag)
 {
+	uint8_t temp[3];
+	//first read tiem ,then read date, or not time is not run;
 	RTC_DateTypeDef sdatestructureget;
   RTC_TimeTypeDef stimestructureget;
 	HAL_RTCStateTypeDef status;
 
-osMutexWait(rtc_mutex, osWaitForever);
 	if(data!=NULL)
 	{	
+		osMutexWait(rtc_mutex, osWaitForever);
+		/* Get the RTC current Time */
+		HAL_RTC_GetTime(&hrtc, &stimestructureget, RTC_FORMAT_BIN);
+		temp[0]=stimestructureget.Hours;
+		temp[1]=stimestructureget.Minutes;
+		temp[2]=stimestructureget.Seconds;
+		
+		memcpy(&current_datetime[3],temp,3);
+		
+		/* Get the RTC current Date */
+		HAL_RTC_GetDate(&hrtc, &sdatestructureget, RTC_FORMAT_BIN);
+		data[0]=sdatestructureget.Year;
+		data[1]=sdatestructureget.Month;
+		data[2]=sdatestructureget.Date;
+		current_datetime[6]=sdatestructureget.WeekDay;
+
+		memcpy(&current_datetime[0],data,3);
+
 		if(flag==1)
 		{
-			/* Get the RTC current Time */
-			status=HAL_RTC_GetState(&RtcHandle);
-			HAL_RTC_GetTime(&RtcHandle, &stimestructureget, RTC_FORMAT_BIN);
-			data[0]=stimestructureget.Hours;
-			data[1]=stimestructureget.Minutes;
-			data[2]=stimestructureget.Seconds;
+			memcpy(data,temp,3);
 		}
-		else if(flag==2)
-		{
-			/* Get the RTC current Date */
-			HAL_RTC_GetDate(&RtcHandle, &sdatestructureget, RTC_FORMAT_BIN);
-			data[0]=sdatestructureget.Year;
-			data[1]=sdatestructureget.Month;
-			data[2]=sdatestructureget.Date;
-		}
+		osMutexRelease(rtc_mutex);
 	}
-	osMutexRelease(rtc_mutex);
 }
-//-----------------------------------------------------------
-//传入BCD码
+//------------------------------------------------------------------
 void RTC_Set_datetime(uint8_t * data)
 {
+	uint8_t temp[3];
 	RTC_DateTypeDef sdatestructure;
   RTC_TimeTypeDef stimestructure;
 	if(data!=NULL)
 	{
-		
+		osMutexWait(rtc_mutex, osWaitForever);
+
 			sdatestructure.Year =data[0];
 			sdatestructure.Month = data[1];
 			sdatestructure.Date = data[2];
+		  sdatestructure.WeekDay= CaculateWeekDay(data[0],data[1],data[2]);
 
-			if(HAL_RTC_SetDate(&RtcHandle,&sdatestructure,RTC_FORMAT_BIN) != HAL_OK)
+			if(HAL_RTC_SetDate(&hrtc,&sdatestructure,RTC_FORMAT_BIN) != HAL_OK)
 			{
 				/* Initialization Error */
 				Error_Handler("set time error"); 
@@ -79,182 +118,69 @@ void RTC_Set_datetime(uint8_t * data)
 			stimestructure.TimeFormat = RTC_HOURFORMAT12_AM;
 			stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
 			stimestructure.StoreOperation = RTC_STOREOPERATION_RESET;
-			if(HAL_RTC_SetTime(&RtcHandle,&stimestructure,RTC_FORMAT_BIN) != HAL_OK)
+			if(HAL_RTC_SetTime(&hrtc,&stimestructure,RTC_FORMAT_BIN) != HAL_OK)
 				{
 					/* Initialization Error */
 					Error_Handler("set date error"); 
-				}		
+				}	
+#if 0				
+					//flash lcd
+		HAL_RTC_GetTime(&hrtc, &stimestructure, RTC_FORMAT_BIN);
+		temp[0]=stimestructure.Hours;
+		temp[1]=stimestructure.Minutes;
+		temp[2]=stimestructure.Seconds;
+		
+		memcpy(&current_datetime[3],temp,3);
+		
+		/* Get the RTC current Date */
+		HAL_RTC_GetDate(&hrtc, &sdatestructure, RTC_FORMAT_BIN);
+		data[0]=sdatestructure.Year;
+		data[1]=sdatestructure.Month;
+		data[2]=sdatestructure.Date;
+		current_datetime[6]=sdatestructure.WeekDay;
+		memcpy(&current_datetime[0],data,3);
+#endif
+		if(disp_sort==0)
+				send_message(4);
+
+	  osMutexRelease(rtc_mutex);
 
 	}//data=null
 }
-//void RTC_Set_datetime(uint8_t * data,uint8_t flag)
-//{
-//	RTC_DateTypeDef sdatestructure;
-//  RTC_TimeTypeDef stimestructure;
-//	if(data!=NULL)
-//	{
-//		if(flag==1)
-//		{
-//			SEGGER_RTT_printf(0,"RTC_Set_datetime:time=%02d-%02d-%02d;\r\n",data[0],data[1],data[2]);
-//			 /* Set Time: 02:00:00 */
-//			stimestructure.Hours = data[0];
-//			stimestructure.Minutes = data[1];
-//			stimestructure.Seconds = data[2];
-//			stimestructure.TimeFormat = RTC_HOURFORMAT12_AM;
-//			stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-//			stimestructure.StoreOperation = RTC_STOREOPERATION_RESET;
-//			if(HAL_RTC_SetTime(&RtcHandle,&stimestructure,RTC_FORMAT_BIN) != HAL_OK)
-//				{
-//					/* Initialization Error */
-//					Error_Handler("set date error"); 
-//				}		
-//		}
-//		else if(flag==2)
-//		{
-//			SEGGER_RTT_printf(0,"RTC_Set_datetime:date=%02d-%02d-%02d;\r\n",data[0],data[1],data[2]);
-//			sdatestructure.Year =data[0];
-//			sdatestructure.Month = data[1];
-//			sdatestructure.Date = data[2];
-
-//			if(HAL_RTC_SetDate(&RtcHandle,&sdatestructure,RTC_FORMAT_BIN) != HAL_OK)
-//			{
-//				/* Initialization Error */
-//				Error_Handler("set time error"); 
-//			} 
-//		}
-//	}//data=null
-
-//}
-//---------------------------------------------------------
-//设置alarm
- void RTC_AlarmConfig(uint8_t hour,uint8_t min)
-{
-  static RTC_AlarmTypeDef salarmstructure;
-
- 
-  /*##-1- Configure the RTC Alarm peripheral #################################*/
-  /* Set Alarm to 02:20:30 
-     RTC Alarm Generation: Alarm on Hours, Minutes and Seconds */
-  salarmstructure.Alarm = RTC_ALARM_A;
-  salarmstructure.AlarmDateWeekDay = RTC_WEEKDAY_MONDAY;
-  salarmstructure.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
-  salarmstructure.AlarmMask = RTC_ALARMMASK_DATEWEEKDAY;
-  salarmstructure.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_NONE;
-  salarmstructure.AlarmTime.TimeFormat = RTC_HOURFORMAT12_AM;
-  salarmstructure.AlarmTime.Hours = hour;
-  salarmstructure.AlarmTime.Minutes = min;
-	//if(flag==1)
-		salarmstructure.AlarmTime.Seconds = 1;
-	//salarmstructure.AlarmTime.Seconds+=10;
-	//else if(flag==2)
-	//	salarmstructure.AlarmTime.Seconds = 10;
-	//else
-	//	salarmstructure.AlarmTime.Seconds+=5;
-  //salarmstructure.AlarmTime.SubSeconds = 0x56;
-	
-	//7SEGGER_RTT_printf(0,"RTC_AlarmConfig:%02d-%02d;\r\n",hour,min);
-
-  
-  if(HAL_RTC_SetAlarm_IT(&RtcHandle,&salarmstructure,RTC_FORMAT_BIN) != HAL_OK)
-  {
-    /* Initialization Error */
-    Error_Handler("RTC_AlarmConfig:error"); 
-  }  
-}
-
-//---------------------------------------------------
-static void RTC_CalendarConfig(void)
-{
-  RTC_DateTypeDef sdatestructure;
-  RTC_TimeTypeDef stimestructure;
-
-  /*##-1- Configure the Date #################################################*/
-  /* Set Date: Tuesday February 18th 2014 */
-  sdatestructure.Year = 0x16;
-  sdatestructure.Month = RTC_MONTH_FEBRUARY;
-  sdatestructure.Date = 0x04;
-  sdatestructure.WeekDay = RTC_WEEKDAY_TUESDAY;
-  
-  if(HAL_RTC_SetDate(&RtcHandle,&sdatestructure,RTC_FORMAT_BCD) != HAL_OK)
-  {
-    /* Initialization Error */
-    Error_Handler("set date error-config"); 
-  } 
-  
-  /*##-2- Configure the Time #################################################*/
-  /* Set Time: 02:00:00 */
-  stimestructure.Hours = 0x05;
-  stimestructure.Minutes = 0x33;
-  stimestructure.Seconds = 0x00;
-  stimestructure.TimeFormat = RTC_HOURFORMAT12_AM;
-  stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-  stimestructure.StoreOperation = RTC_STOREOPERATION_RESET;
-  
-  if(HAL_RTC_SetTime(&RtcHandle,&stimestructure,RTC_FORMAT_BCD) != HAL_OK)
-  {
-    /* Initialization Error */
-    Error_Handler("set time error-config"); 
-  }
-  
-  /*##-3- Writes a data in a RTC Backup data Register0 #######################*/
-  HAL_RTCEx_BKUPWrite(&RtcHandle,RTC_BKP_DR0,0x32F4);  
-}
-//--------------------------------------------------------
+//----------------------------------------------------------------
+//alarm callback
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 {
-  		SEGGER_RTT_printf(0,"rtc alarm\r\n");
-			osSemaphoreRelease(osSemaphore);
-			//osMessagePut(myQueue01Handle, 1066, 0);
+  	Info_Handler("alarm");
+		rtc_flag=1;
+		send_message(2);
+
 }
-#endif
-//------------------------------------------
-void eric_rtc_init()
+//------------------------------------------------------------
+//wake up control
+void rtc_wakeup(uint8_t flag)
 {
-	uint16_t temp=0;
-	//rtc
-	RtcHandle.Instance = RTC;
-	RtcHandle.Init.HourFormat = RTC_HOURFORMAT_24;
-  RtcHandle.Init.AsynchPrediv = RTC_ASYNCH_PREDIV;
-  RtcHandle.Init.SynchPrediv = RTC_SYNCH_PREDIV;
-  RtcHandle.Init.OutPut = RTC_OUTPUT_DISABLE;
-  RtcHandle.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
-  RtcHandle.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
-  
-  if(HAL_RTC_Init(&RtcHandle) != HAL_OK)
-  {
-    /* Initialization Error */
-    Error_Handler("rtc init fail");
-  }
-	
-	//HAL_RTCEx_BKUPWrite(&RtcHandle,RTC_BKP_DR0,0x32F4);  
-//	temp=HAL_RTCEx_BKUPRead(&RtcHandle, RTC_BKP_DR0);
-//	if(temp != 0x32F4)
-//  {  
-//    /* Configure RTC Calendar */
-//    RTC_CalendarConfig();
-//  }
-//  else
-//  {
-//    /* Clear Reset Flag */
-//    __HAL_RCC_CLEAR_RESET_FLAGS();
-//  }
-	
-	//初始化时间
+	if(flag==0)
+		HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+	else
+		HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 10240, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
+
+}
+void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef * hrtc)
+{
+	if(sensor_flag==0)
 	{
-		//uint8_t time[3]={0x10,0x00,0x10};
-		//uint8_t data[6]={0x00,0x03,0x09,0x10,0x00,0x10};
-		//RTC_Set_datetime(date,2);
-		//RTC_Set_datetime(time,1);
-		//SEGGER_RTT_printf(0,"RTC_Set_datetime:date=%02d-%02d-%02d;time=%02d-%02d-%02d;\r\n",data[0],data[1],data[2],data[3],data[4],data[5]);
-
-		//RTC_Set_datetime(data);
-
+		send_message(2);
 	}
-	//初始化binary
-	osSemaphoreDef(SEM);
-	osSemaphore = osSemaphoreCreate(osSemaphore(SEM) , 1);
-	//mutex
+}
+
+//-----------------------------------------------------------
+void rtc_init()
+{
+  HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+
 	osMutexDef(rtc_mutex); 
 	rtc_mutex = osMutexCreate(osMutex(rtc_mutex));
 
 }
+

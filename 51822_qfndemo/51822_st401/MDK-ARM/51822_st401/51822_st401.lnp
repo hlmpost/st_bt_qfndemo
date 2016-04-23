@@ -25,6 +25,7 @@
 "51822_st401\eric_flash.o"
 "51822_st401\imagedata_1.43_test_01.bmp.o"
 "51822_st401\notify.o"
+"51822_st401\eric_rtc.o"
 "51822_st401\startup_stm32f401xe.o"
 "51822_st401\stm32f4xx_hal_flash.o"
 "51822_st401\stm32f4xx_hal_rtc.o"
